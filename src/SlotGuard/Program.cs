@@ -43,7 +43,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapOpenApi();
-app.MapGet("/", () => Results.Ok(new { service = "SlotGuard" }));
+app.MapBookingEndpoints();
 app.Run();
 
 public partial class Program;
