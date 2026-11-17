@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3f6f8">
+  <meta name="theme-color" content="#f5f6f1">
   <title>SlotGuard — рабочее пространство</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles.css">
@@ -21,18 +21,18 @@
   <aside class="sidebar">
     <a class="brand" href="#overview" aria-label="SlotGuard, обзор"><span class="brand-icon" aria-hidden="true"><span></span></span>SlotGuard</a>
     <nav aria-label="Разделы рабочего пространства">
-      <a href="#overview" data-nav="overview" aria-current="page"><span aria-hidden="true">▥</span>Обзор</a>
-      <a href="#calendar" data-nav="calendar"><span aria-hidden="true">▦</span>Календарь</a>
-      <a href="#mine" data-nav="mine"><span aria-hidden="true">✓</span>Мои записи</a>
-      <a href="#manage" data-nav="manage" hidden><span aria-hidden="true">⚙</span>Управление</a>
-      <a href="#team" data-nav="team" hidden><span aria-hidden="true">♙</span>Команда</a>
+      <a href="#overview" data-nav="overview" aria-current="page"><span class="symbol" aria-hidden="true">grid_view</span>Обзор</a>
+      <a href="#calendar" data-nav="calendar"><span class="symbol" aria-hidden="true">calendar_month</span>Календарь</a>
+      <a href="#mine" data-nav="mine"><span class="symbol" aria-hidden="true">event_available</span>Мои записи</a>
+      <a href="#manage" data-nav="manage" hidden><span class="symbol" aria-hidden="true">settings</span>Управление</a>
+      <a href="#team" data-nav="team" hidden><span class="symbol" aria-hidden="true">group</span>Команда</a>
     </nav>
   </aside>
   <div class="app-main">
   <header class="topbar">
     <div class="shell topbar-inner">
       <div id="organization-controls" class="organization-controls" hidden>
-        <label for="organization">Организация</label>
+        <label for="organization" class="symbol" aria-hidden="true">apartment</label>
         <select id="organization" aria-label="Организация"></select>
         <span id="organization-role" class="guest"></span>
       </div>
@@ -66,12 +66,13 @@
       <div id="notifications" class="notification-list" aria-live="polite"></div>
     </section>
     <section data-screen="overview" aria-labelledby="overview-title">
-      <div class="page-heading">
-        <div>
+      <div class="overview-hero">
+        <div class="hero-content">
+          <p class="hero-period"><span class="symbol" aria-hidden="true">calendar_month</span><span id="overview-period">Загрузка расписания…</span></p>
           <h1 id="overview-title">Обзор расписания</h1>
-          <p id="overview-period" class="intro">Загрузка расписания…</p>
+          <p class="hero-caption">Бронируйте помещения и оборудование вашей команды.</p>
+          <a href="#calendar" class="page-action hero-action">Открыть календарь <span class="symbol" aria-hidden="true">arrow_outward</span></a>
         </div>
-        <a href="#calendar" class="page-action">Открыть календарь <span aria-hidden="true">↗</span></a>
       </div>
       <div id="overview-content"></div>
     </section>
@@ -148,7 +149,13 @@
       <span id="live-status" class="live-status" hidden></span>
     </div>
     <section class="resources-section" aria-labelledby="resources-title">
-      <h2 id="resources-title">Ресурсы</h2>
+      <div class="section-heading">
+        <h2 id="resources-title">Ресурсы</h2>
+        <label class="calendar-search" id="calendar-search-wrap" hidden>
+          <span class="symbol" aria-hidden="true">search</span>
+          <input id="calendar-search" type="search" placeholder="Найти ресурс" aria-label="Поиск в календаре" autocomplete="off">
+        </label>
+      </div>
       <div id="resources" class="resources"></div>
     </section>
 
@@ -165,6 +172,7 @@
             <button type="button" class="icon-button" id="next" aria-label="Следующая неделя" disabled>›</button>
           </div>
         </div>
+        <div id="mobile-days" class="mobile-days" role="group" aria-label="День недели"></div>
         <div class="calendar-scroll" tabindex="0" role="region" aria-label="Слоты по дням недели">
           <div id="week" class="week"></div>
         </div>
@@ -173,6 +181,7 @@
             <li><span class="dot available"></span>Свободно</li>
             <li><span class="dot booked"></span>Занято</li>
             <li><span class="dot mine"></span>Моя бронь</li>
+            <li><span class="dot held"></span>Резерв</li>
             <li><span class="dot maintenance"></span>Обслуживание</li>
           </ul>
           <span class="timezone">МСК · UTC+3</span>
@@ -182,12 +191,12 @@
       <aside class="panel details" aria-labelledby="details-title">
         <h2 id="details-title">Выбранный слот</h2>
         <div id="details"></div>
-        <section id="race-panel" class="race-panel" aria-labelledby="race-title" hidden>
-          <h3 id="race-title">Проверка конкуренции</h3>
+        <details id="race-panel" class="race-panel" hidden>
+          <summary>Демо конкурентного бронирования</summary>
           <p>Отправьте 20 одновременных запросов на этот слот.</p>
           <button type="button" id="race-button" class="button secondary">Запустить 20 запросов</button>
           <div id="race-result" class="race-result" role="status"></div>
-        </section>
+        </details>
       </aside>
     </div>
     </section>

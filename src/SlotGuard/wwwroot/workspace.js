@@ -98,9 +98,11 @@ async function loadWorkspace() {
   }
 }
 
-function statsTile(label, value, className) {
+function statsTile(label, value, className, iconName) {
   const item = element("div", `stat-tile ${className}`);
-  item.append(element("span", "stat-label", label), element("strong", "stat-value", value));
+  const icon = symbol(iconName);
+  icon.classList.add("stat-icon");
+  item.append(icon, element("strong", "stat-value", value), element("span", "stat-label", label));
   return item;
 }
 
@@ -110,10 +112,10 @@ function renderOverview(data, agenda) {
     + " · Москва";
   const metrics = element("div", "stat-row");
   metrics.append(
-    statsTile("Свободные слоты", data.totals.free, "stat-free"),
-    statsTile("Подтверждённые брони", data.totals.booked, "stat-booked"),
-    statsTile("В листе ожидания", data.waiting, "stat-held"),
-    statsTile("Слоты на обслуживании", data.totals.maintenance, "stat-maintenance")
+    statsTile("Свободные слоты", data.totals.free, "stat-free", "calendar_month"),
+    statsTile("Подтверждённые брони", data.totals.booked, "stat-booked", "check_circle"),
+    statsTile("В листе ожидания", data.waiting, "stat-held", "schedule"),
+    statsTile("На обслуживании", data.totals.maintenance, "stat-maintenance", "build")
   );
   const columns = element("div", "overview-grid");
   columns.append(weeklyChart(data), nextBookings(agenda));
@@ -139,13 +141,18 @@ function weeklyChart(data) {
   header.append(element("h2", "", "Загрузка по дням"), navigation);
 
   const chart = element("div", "week-chart");
-  const max = Math.max(1, ...data.days.map(day => Object.values(day.counts).reduce((sum, count) => sum + count, 0)));
+  const totals = data.days.map(day => Object.values(day.counts).reduce((sum, count) => sum + count, 0));
+  const step = Math.max(1, Math.ceil(Math.max(...totals) / 4));
+  const axis = element("div", "chart-axis");
+  axis.setAttribute("aria-hidden", "true");
+  axis.append(...[4, 3, 2, 1, 0].map(value => element("span", "", value * step)));
+  chart.append(axis);
   for (const day of data.days) {
     const total = Object.values(day.counts).reduce((sum, count) => sum + count, 0);
     const column = element("div", "chart-day");
     const bars = element("div", "chart-bars");
     const stack = element("div", "chart-stack");
-    stack.style.height = `${total / max * 100}%`;
+    stack.style.height = `${total / (step * 4) * 100}%`;
     const breakdown = [];
     for (const kind of ["booked", "held", "maintenance", "free"]) {
       const count = day.counts[kind];
@@ -178,11 +185,13 @@ function nextBookings(agenda) {
   const header = element("div", "section-heading");
   const link = element("a", "text-link", "Все записи");
   link.href = "#mine";
-  header.append(element("h2", "", "Мои ближайшие"), link);
+  header.append(element("h2", "", "Ближайшие записи"), link);
   panel.append(header);
   if (agenda.upcoming.length === 0) {
     const empty = element("div", "next-empty");
-    empty.append(element("div", "empty-symbol", "▦"), element("strong", "", "Свободное расписание"),
+    const icon = symbol("event_available");
+    icon.classList.add("empty-symbol");
+    empty.append(icon, element("strong", "", "Свободное расписание"),
       element("p", "", "Здесь появятся ваши брони и резервы."));
     const action = element("a", "text-link", "Выбрать время ↗");
     action.href = "#calendar";
@@ -191,7 +200,11 @@ function nextBookings(agenda) {
   } else {
     for (const item of agenda.upcoming.slice(0, 4)) {
       const action = button("next-booking", undefined, () => goToCalendar(item));
-      action.append(element("strong", "", item.resourceName), element("span", "", appointmentTime(item.startsAt)));
+      const time = element("div", "data-title");
+      time.append(element("strong", "", item.resourceName), element("span", "", appointmentTime(item.startsAt)));
+      const icon = symbol(item.holdExpiresAt ? "schedule" : "event_available");
+      icon.classList.add("empty-symbol");
+      action.append(icon, time, symbol("arrow_outward"));
       panel.append(action);
     }
   }

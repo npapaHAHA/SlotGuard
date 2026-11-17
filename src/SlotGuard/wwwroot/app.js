@@ -2,7 +2,7 @@ const ui = Object.fromEntries([
   "guest", "notice", "resources", "week-label", "prev", "today", "next", "week",
   "details", "race-panel", "race-button", "race-result", "status", "organization-controls", "organization",
   "organization-role", "session-button", "login-dialog", "login-form", "login-cancel", "login-error",
-  "notification-panel", "notifications"
+  "notification-panel", "notifications", "mobile-days", "calendar-search", "calendar-search-wrap"
 ].map(id => [id, document.getElementById(id)]));
 
 const labels = {
@@ -37,6 +37,12 @@ function element(tag, className, text) {
   node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function symbol(name) {
+  const icon = element("span", "symbol", name);
+  icon.setAttribute("aria-hidden", "true");
+  return icon;
 }
 
 function button(className, text, onClick) {
@@ -120,10 +126,14 @@ async function pollWaitlist(force = false) {
 
     const previousSlot = selectedSlot();
     const focusedSlot = document.activeElement?.dataset.startsAt;
+    const focusedDay = document.activeElement?.dataset.day;
     state.calendar = calendar;
     renderCalendar();
     if (focusedSlot) {
       [...ui.week.querySelectorAll(".slot")].find(node => node.dataset.startsAt === focusedSlot)
+        ?.focus({ preventScroll: true });
+    } else if (focusedDay) {
+      [...ui["mobile-days"].children].find(node => node.dataset.day === focusedDay)
         ?.focus({ preventScroll: true });
     }
     const slot = selectedSlot();
@@ -254,7 +264,11 @@ function isAdmin() {
 }
 
 function renderResources() {
-  const buttons = state.resources.map(resource => {
+  const query = ui["calendar-search"].value.trim().toLocaleLowerCase("ru");
+  const resources = state.resources.filter(resource =>
+    `${resource.name} ${resource.location}`.toLocaleLowerCase("ru").includes(query));
+  ui["calendar-search-wrap"].hidden = state.resources.length < 2;
+  const buttons = resources.map(resource => {
     const item = button("resource", undefined, () => changeCalendar(resource.id, state.calendar?.week));
     item.dataset.resourceId = resource.id;
     item.disabled = state.busy;
@@ -270,7 +284,7 @@ function renderResources() {
     return item;
   });
   ui.resources.replaceChildren(...(buttons.length ? buttons : (state.organizationId
-    ? [element("p", "list-empty", "Нет доступных ресурсов.")] : [])));
+    ? [element("p", "list-empty", query ? "По запросу ничего не найдено." : "Нет доступных ресурсов.")] : [])));
 }
 
 function renderCalendar() {
@@ -281,6 +295,7 @@ function renderCalendar() {
   if (!calendar) {
     ui["week-label"].textContent = state.busy ? "Загрузка…" : "Выберите доступный ресурс";
     ui.week.replaceChildren();
+    ui["mobile-days"].replaceChildren();
     return;
   }
 
@@ -288,8 +303,21 @@ function renderCalendar() {
   ui["week-label"].textContent = dateFormat.formatRange(new Date(week), new Date(days.at(-1).date))
     + ` ${new Date(days.at(-1).date).getUTCFullYear()}`;
 
+  const mobileTabs = [];
   const columns = days.map((day, index) => {
     const column = element("div", day.date === calendar.today ? "day current" : "day");
+    column.dataset.date = day.date;
+    const dayButton = button("mobile-day", undefined, () => {
+      const slot = day.slots.find(item => item.status === "available")
+        ?? day.slots.find(item => item.status !== "past") ?? day.slots[0];
+      if (slot) selectSlot(slot, day.date);
+    });
+    dayButton.dataset.day = day.date;
+    dayButton.disabled = state.busy;
+    dayButton.setAttribute("aria-label", dateFormat.format(new Date(day.date)));
+    if (day.date === calendar.today) dayButton.setAttribute("aria-current", "date");
+    dayButton.append(element("span", "", weekdays[index]), element("strong", "", Number(day.date.slice(-2))));
+    mobileTabs.push(dayButton);
     const heading = element("div", "day-heading");
     heading.append(element("span", "weekday", weekdays[index]), element("span", "day-number", Number(day.date.slice(-2))));
     const slots = element("div", "slots");
@@ -309,13 +337,23 @@ function renderCalendar() {
     return column;
   });
   ui.week.replaceChildren(...columns);
+  ui["mobile-days"].replaceChildren(...mobileTabs);
+  renderMobileDay(days.find(day => day.slots.some(slot => slot.startsAt === state.selected))?.date ?? days[0].date);
 }
 
-function selectSlot(slot) {
+function renderMobileDay(date) {
+  for (const column of ui.week.children)
+    column.dataset.mobileActive = String(column.dataset.date === date);
+  for (const tab of ui["mobile-days"].children)
+    tab.setAttribute("aria-pressed", String(tab.dataset.day === date));
+}
+
+function selectSlot(slot, day) {
   if (slot.startsAt !== state.selected) state.race = null;
   state.selected = slot.startsAt;
   for (const item of ui.week.querySelectorAll(".slot"))
     item.setAttribute("aria-pressed", item.dataset.startsAt === state.selected);
+  renderMobileDay(day ?? state.calendar.days.find(item => item.slots.includes(slot)).date);
   renderDetails();
 }
 
@@ -328,11 +366,19 @@ function renderDetails() {
   const start = new Date(slot.startsAt);
   const end = new Date(start.valueOf() + 60 * 60 * 1000);
   const section = element("div", "details-slot");
+  const resource = state.resources.find(item => item.id === state.resourceId);
   section.append(
     element("span", `pill ${slot.status}`, labels[slot.status]),
     element("p", "details-date", slotDateFormat.format(start)),
     element("p", "details-time", `${timeFormat.format(start)}–${timeFormat.format(end)}`)
   );
+  if (resource) {
+    const context = element("div", "slot-resource");
+    const identity = element("div", "data-title");
+    identity.append(element("strong", "", resource.name), element("span", "", resource.location));
+    context.append(symbol("meeting_room"), identity);
+    section.append(context);
+  }
   renderSlotActions(section, slot);
   ui.details.append(section);
   updateCountdown();
@@ -476,6 +522,7 @@ async function enterOrganization(id) {
   if (resources.length) await loadCalendar(resources[0].id, undefined, false, id);
   else Object.assign(state, { resourceId: null, calendar: null, selected: null, race: null });
   state.resources = resources;
+  if (id !== state.organizationId) ui["calendar-search"].value = "";
   state.organizationId = id;
   sessionStorage.setItem("slotguard.organization", id);
   renderNotifications([]);
@@ -543,6 +590,7 @@ ui.prev.addEventListener("click", () => changeCalendar(state.resourceId, isoPlus
 ui.next.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, 7)));
 ui.today.addEventListener("click", () => changeCalendar(state.resourceId, state.calendar.firstWeek));
 ui["race-button"].addEventListener("click", raceForSlot);
+ui["calendar-search"].addEventListener("input", renderResources);
 setInterval(() => { if (!liveReady) pollWaitlist(); }, 2000);
 setInterval(pollNotifications, 2000);
 setInterval(updateCountdown, 1000);

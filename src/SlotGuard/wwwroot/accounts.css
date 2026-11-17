@@ -3,27 +3,27 @@
   display: grid;
   align-items: center;
   padding: clamp(26px, 7vw, 88px);
-  background: radial-gradient(ellipse at 100% 0, #c6e9df 0%, transparent 52%), #fff;
+  background: radial-gradient(ellipse at 100% 0, #e1edcc 0%, transparent 52%), #fff;
 }
 .welcome-content { max-width: 540px; }
 .welcome h1 { margin: 24px 0 12px; }
-.welcome p { max-width: 390px; color: #45646f; line-height: 1.6; margin: 0 0 25px; }
+.welcome p { max-width: 390px; color: var(--subtle); line-height: 1.6; margin: 0 0 25px; }
 .account-dialog { width: min(440px, calc(100vw - 30px)); padding: clamp(20px, 5vw, 32px); }
 .account-dialog-title { display: flex; justify-content: space-between; align-items: center; }
 .account-dialog .brand-icon, .welcome .brand-icon {
   width: 42px;
   height: 42px;
-  background: #c7eee0;
-  color: #0f564b;
+  background: var(--lime);
+  color: var(--accent-dark);
 }
 .account-dialog h2 { margin: 6px 0 0; font-size: 1.55rem; }
-.account-dialog p:not(.form-message), .invite-card > p { margin: 0; color: #47606d; line-height: 1.55; }
+.account-dialog p:not(.form-message), .invite-card > p { margin: 0; color: var(--subtle); line-height: 1.55; }
 .account-dialog button[type="submit"] { width: 100%; justify-content: center; min-height: 42px; }
 #account-fields { display: grid; gap: 10px; }
 #account-fields:empty { display: none; }
 #account-fields small { color: #536c76; line-height: 1.45; }
 #account-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.account-link { background: none; border: 0; color: #126357; cursor: pointer; padding: 3px 0; font-weight: 650; text-align: left; }
+.account-link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 3px 0; font-weight: 650; text-align: left; }
 .account-link:hover { text-decoration: underline; }
 .account-close { font-size: 1.25rem; }
 .invite-banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 20px; margin: 0 0 18px; border-color: #a1d6c7; background: #eefaf5; }
@@ -42,8 +42,8 @@
   flex: none;
   place-items: center;
   border-radius: 10px;
-  background: #e2f3ee;
-  color: #14554a;
+  background: #e9f2db;
+  color: var(--accent-dark);
   font-weight: 750;
 }
 .live-status { display: inline-flex; align-items: center; gap: 6px; color: #526d78; background: #e8eff2; padding: 7px 11px; border-radius: 99px; font-size: .75rem; white-space: nowrap; }
