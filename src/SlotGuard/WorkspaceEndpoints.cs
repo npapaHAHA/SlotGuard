@@ -37,7 +37,8 @@ internal static class WorkspaceEndpoints
         var rows = await db.Bookings.AsNoTracking().Where(item => ids.Contains(item.ResourceId)
             && item.StartUtc >= start && item.StartUtc < end && item.StartUtc > now && item.CancelledAt == null)
             .Select(item => new Occupancy(item.ResourceId, item.StartUtc,
-                item.MaintenanceReason != null ? "maintenance" : item.HoldExpiresAt != null ? "held" : "booked"))
+                item.MaintenanceReason != null ? "maintenance" : item.HoldExpiresAt != null ? "held"
+                : item.ApprovalStatus == BookingApproval.Pending ? "pending" : "booked"))
             .ToListAsync(ct);
         var waiting = await db.WaitlistEntries.AsNoTracking().CountAsync(item => ids.Contains(item.ResourceId)
             && item.StartUtc >= start && item.StartUtc < end && item.StartUtc > now && item.RemovedAt == null, ct);
@@ -69,7 +70,8 @@ internal static class WorkspaceEndpoints
         var booked = groups["booked"].Count();
         var held = groups["held"].Count();
         var maintenance = groups["maintenance"].Count();
-        return new Totals(capacity - booked - held - maintenance, booked, held, maintenance);
+        var pending = groups["pending"].Count();
+        return new Totals(capacity - booked - held - maintenance - pending, booked, held, maintenance, pending);
     }
 
     private static async Task<IResult> MySchedule(BookingDb db, OrganizationScope scope, ClaimsPrincipal user,
@@ -85,7 +87,8 @@ internal static class WorkspaceEndpoints
             select new
             {
                 booking.Id, booking.ResourceId, ResourceName = resource.Name, resource.Location,
-                StartsAt = booking.StartUtc, booking.HoldExpiresAt, booking.CancelledAt
+                StartsAt = booking.StartUtc, booking.HoldExpiresAt, booking.CancelledAt,
+                booking.ApprovalStatus, booking.ApprovalReason, resource.RequiresApproval
             };
         var upcoming = await myBookings.Where(item => item.StartsAt > now && item.CancelledAt == null
                 && (item.HoldExpiresAt == null || item.HoldExpiresAt > now))
@@ -123,7 +126,7 @@ internal static class WorkspaceEndpoints
         if (!ValidResource(input))
             return InvalidResource();
         var resource = new Resource(Guid.NewGuid().ToString("N"), input.Name!.Trim(), input.Location!.Trim(),
-            100, scope.Current.Id);
+            100, scope.Current.Id) { RequiresApproval = input.RequiresApproval ?? false };
         if (input.Details is not null)
             resource = input.Details.ApplyTo(resource);
         db.Resources.Add(resource);
@@ -133,7 +136,7 @@ internal static class WorkspaceEndpoints
     }
 
     private static async Task<IResult> EditResource(string id, ResourceInput input, BookingDb db, OrganizationScope scope,
-        ClaimsPrincipal user, TimeProvider clock, CancellationToken ct)
+        ClaimsPrincipal user, TimeProvider clock, CalendarUpdates updates, CancellationToken ct)
     {
         if (!scope.IsAdmin)
             return Results.StatusCode(403);
@@ -154,7 +157,8 @@ internal static class WorkspaceEndpoints
 
         var updated = resource with
         {
-            Name = input.Name!.Trim(), Location = input.Location!.Trim(), IsArchived = input.IsArchived
+            Name = input.Name!.Trim(), Location = input.Location!.Trim(), IsArchived = input.IsArchived,
+            RequiresApproval = input.RequiresApproval ?? resource.RequiresApproval
         };
         if (input.Details is not null)
             updated = input.Details.ApplyTo(updated);
@@ -167,12 +171,15 @@ internal static class WorkspaceEndpoints
             .SetProperty(item => item.Type, updated.Type)
             .SetProperty(item => item.Capacity, updated.Capacity)
             .SetProperty(item => item.Equipment, updated.Equipment)
+            .SetProperty(item => item.RequiresApproval, updated.RequiresApproval)
             .SetProperty(item => item.IsArchived, updated.IsArchived), ct);
         var action = resource.IsArchived == updated.IsArchived ? "resource.updated"
             : updated.IsArchived ? "resource.archived" : "resource.restored";
         Audit.Add(db, updated, Actor(user), action, updated.Location, now);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+        if (updated.RequiresApproval != resource.RequiresApproval)
+            await updates.Publish(scope.Current.Id);
         return Results.Ok(updated);
     }
 
@@ -194,9 +201,10 @@ internal static class WorkspaceEndpoints
 
     internal static string Actor(ClaimsPrincipal user) => user.FindFirstValue(ClaimTypes.GivenName)
         ?? user.Identity?.Name ?? "Администратор";
-    private sealed record ResourceInput(string? Name, string? Location, bool IsArchived = false, ResourceDetails? Details = null);
+    private sealed record ResourceInput(string? Name, string? Location, bool IsArchived = false, ResourceDetails? Details = null,
+        bool? RequiresApproval = null);
     private sealed record Occupancy(string ResourceId, DateTimeOffset StartsAt, string Status);
-    private sealed record Totals(int Free, int Booked, int Held, int Maintenance);
+    private sealed record Totals(int Free, int Booked, int Held, int Maintenance, int Pending);
 }
 
 internal static class Audit

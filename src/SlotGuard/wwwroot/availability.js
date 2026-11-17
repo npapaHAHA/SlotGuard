@@ -100,12 +100,14 @@ function availabilityCard(slot) {
   tags.append(element("li", "", resourceTypeLabels[resource.type] ?? resourceTypeLabels.other));
   if (resource.capacity) tags.append(element("li", "", `До ${resource.capacity} чел.`));
   for (const tag of resource.equipment) tags.append(element("li", "", tag));
+  if (resource.requiresApproval) tags.append(element("li", "approval-caption", "По согласованию"));
   const schedule = element("div", "available-action");
   const date = element("time", "", appointmentTime(slot.startsAt));
   date.dateTime = slot.startsAt;
-  const book = button("page-action", "Забронировать", () => bookFromAvailability(slot));
+  const action = resource.requiresApproval ? "Отправить заявку" : "Забронировать";
+  const book = button("page-action", action, () => bookFromAvailability(slot));
   book.dataset.availableKey = `${resource.id}|${slot.startsAt}`;
-  book.setAttribute("aria-label", `Забронировать: ${resource.name}, ${date.textContent}`);
+  book.setAttribute("aria-label", `${action}: ${resource.name}, ${date.textContent}`);
   schedule.append(date, book);
   card.append(leading, tags, schedule);
   return card;
@@ -143,8 +145,9 @@ function bookFromAvailability(slot) {
   const filters = availability.criteria;
   if (!filters) return;
   run(async () => {
+    let booking;
     try {
-      await api("/api/bookings", jsonRequest("POST", { resourceId: slot.resource.id, startsAt: slot.startsAt }));
+      booking = await api("/api/bookings", jsonRequest("POST", { resourceId: slot.resource.id, startsAt: slot.startsAt }));
     } catch (error) {
       if (error.status !== 409 && error.status !== 404) {
         availabilityNotice(error.message, "error");
@@ -164,7 +167,8 @@ function bookFromAvailability(slot) {
       await fetchAvailability(criteria, true);
       return;
     }
-    availabilityNotice(`Бронь подтверждена · ${slot.resource.name}, ${appointmentTime(slot.startsAt)}.`, "success", true);
+    const confirmation = booking?.approvalStatus === "pending" ? "Заявка на согласовании" : "Бронь подтверждена";
+    availabilityNotice(`${confirmation} · ${slot.resource.name}, ${appointmentTime(slot.startsAt)}.`, "success", true);
     await fetchAvailability(filters, true);
   });
 }

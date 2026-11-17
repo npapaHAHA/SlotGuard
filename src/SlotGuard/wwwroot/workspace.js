@@ -1,17 +1,20 @@
 const workspace = { week: null, agendaFilter: "upcoming", agenda: null, catalog: [], editing: null };
 let workspaceRequest = 0;
 
-const routes = new Set(["overview", "calendar", "availability", "mine", "manage", "team"]);
+const routes = new Set(["overview", "calendar", "availability", "mine", "manage", "approvals", "team"]);
+const adminRoutes = new Set(["manage", "approvals", "team"]);
 const activityLabels = {
   "resource.created": "Добавлен ресурс",
   "resource.updated": "Обновлён ресурс",
   "resource.archived": "Ресурс перемещён в архив",
   "resource.restored": "Ресурс восстановлен",
   "maintenance.created": "Запланировано обслуживание",
-  "maintenance.removed": "Снята блокировка"
+  "maintenance.removed": "Снята блокировка",
+  "booking.approved": "Заявка одобрена",
+  "booking.rejected": "Заявка отклонена"
 };
 const outlookLabels = {
-  free: "Свободно", booked: "Бронь", held: "Резерв", maintenance: "Обслуживание"
+  free: "Свободно", booked: "Бронь", held: "Резерв", pending: "На согласовании", maintenance: "Обслуживание"
 };
 const weekFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
 const dayFormat = new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "UTC" });
@@ -26,15 +29,15 @@ function section(id) {
 function currentScreen() {
   if (state.session?.isAccount && !state.organizationId) return "welcome";
   const route = location.hash.slice(1);
-  if (route === "team" && (!isAdmin() || !state.session?.isAccount)) return "overview";
-  return routes.has(route) && (route !== "manage" || isAdmin()) ? route : "overview";
+  if (adminRoutes.has(route) && !isAdmin() || route === "team" && !state.session?.isAccount) return "overview";
+  return routes.has(route) ? route : "overview";
 }
 
 function renderWorkspaceScreen() {
   const route = currentScreen();
   for (const pane of document.querySelectorAll("[data-screen]")) pane.hidden = pane.dataset.screen !== route;
   for (const link of document.querySelectorAll("[data-nav]")) {
-    link.hidden = route === "welcome" || (["manage", "team"].includes(link.dataset.nav) && !isAdmin())
+    link.hidden = route === "welcome" || (adminRoutes.has(link.dataset.nav) && !isAdmin())
       || (link.dataset.nav === "team" && !state.session?.isAccount);
     if (link.dataset.nav === route) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -44,7 +47,10 @@ function renderWorkspaceScreen() {
   for (const control of service.elements) control.disabled = serviceUnavailable;
   section("resource-form").querySelector('button[type="submit"]').disabled = state.busy;
   section("add-resource").disabled = state.busy;
+  for (const control of section("catalog-content").querySelectorAll(".catalog-row button"))
+    control.disabled = state.busy;
   renderAvailabilityControls();
+  renderApprovalControls();
 }
 
 function resetWorkspace() {
@@ -66,6 +72,7 @@ function resetWorkspace() {
   const dialog = section("resource-dialog");
   if (dialog.open) dialog.close();
   resetAvailability();
+  resetApprovals();
   renderWorkspaceScreen();
 }
 
@@ -87,6 +94,9 @@ async function loadWorkspace() {
     } else if (route === "team") {
       const team = await api("/api/team");
       if (requestId === workspaceRequest) renderTeam(team);
+    } else if (route === "approvals") {
+      const requests = await api("/api/approvals");
+      if (requestId === workspaceRequest) renderApprovals(requests);
     } else {
       const [catalog, activity] = await Promise.all([api("/api/workspace/resources"), api("/api/workspace/activity")]);
       if (requestId === workspaceRequest) {
@@ -113,9 +123,11 @@ function renderOverview(data, agenda) {
   section("overview-period").textContent = weekFormat.formatRange(new Date(data.week), new Date(isoPlusDays(data.week, 6)))
     + " · Москва";
   const metrics = element("div", "stat-row");
+  const bookings = statsTile("Подтверждённые брони", data.totals.booked, "stat-booked", "check_circle");
+  if (data.totals.pending) bookings.append(element("span", "stat-label", `${data.totals.pending} на согласовании`));
   metrics.append(
     statsTile("Свободные слоты", data.totals.free, "stat-free", "calendar_month"),
-    statsTile("Подтверждённые брони", data.totals.booked, "stat-booked", "check_circle"),
+    bookings,
     statsTile("В листе ожидания", data.waiting, "stat-held", "schedule"),
     statsTile("На обслуживании", data.totals.maintenance, "stat-maintenance", "build")
   );
@@ -156,7 +168,7 @@ function weeklyChart(data) {
     const stack = element("div", "chart-stack");
     stack.style.height = `${total / (step * 4) * 100}%`;
     const breakdown = [];
-    for (const kind of ["booked", "held", "maintenance", "free"]) {
+    for (const kind of ["booked", "held", "pending", "maintenance", "free"]) {
       const count = day.counts[kind];
       if (!count) continue;
       const segment = element("div", `chart-segment ${kind}`);
@@ -204,6 +216,7 @@ function nextBookings(agenda) {
       const action = button("next-booking", undefined, () => goToCalendar(item));
       const time = element("div", "data-title");
       time.append(element("strong", "", item.resourceName), element("span", "", appointmentTime(item.startsAt)));
+      if (item.approvalStatus === "pending") time.append(element("span", "", "На согласовании"));
       const icon = symbol(item.holdExpiresAt ? "schedule" : "event_available");
       icon.classList.add("empty-symbol");
       action.append(icon, time, symbol("arrow_outward"));
@@ -226,8 +239,8 @@ function resourceBreakdown(resources) {
     identity.append(element("strong", "", resource.name), element("span", "", resource.location));
     resourceLabel.append(icon, identity);
     const values = element("div", "resource-counts");
-    values.append(element("span", "", `${resource.counts.free} свободно`),
-      element("span", "", `${resource.counts.booked + resource.counts.held + resource.counts.maintenance} занято`));
+    const occupied = resource.counts.booked + resource.counts.held + resource.counts.maintenance + (resource.counts.pending ?? 0);
+    values.append(element("span", "", `${resource.counts.free} свободно`), element("span", "", `${occupied} занято`));
     const action = button("outline-action", "К расписанию", () => goToCalendar({ resourceId: resource.id, week: workspace.week }));
     row.append(resourceLabel, values, action);
     panel.append(row);
@@ -273,21 +286,29 @@ function renderAgenda() {
     const actions = element("div", "row-actions");
     if (workspace.agendaFilter === "history") {
       const expired = item.holdExpiresAt && (!item.cancelledAt || Date.parse(item.holdExpiresAt) <= Date.parse(item.cancelledAt));
-      time.append(element("span", "", expired ? "Резерв истёк" : item.cancelledAt ? "Отменено" : "Завершено"));
+      const label = item.approvalStatus === "rejected" ? "Отклонено"
+        : item.approvalStatus === "pending" ? (item.cancelledAt ? "Заявка отозвана" : "Срок заявки истёк")
+        : expired ? "Резерв истёк" : item.cancelledAt ? "Отменено" : "Завершено";
+      time.append(element("span", item.approvalStatus === "rejected" ? "pill rejected" : "", label));
     } else if (workspace.agendaFilter === "waiting") {
       time.append(element("span", "", `Место в очереди — ${item.position}`));
       actions.append(button("outline-action", "Выйти из очереди", () =>
         updateBooking(`/api/waitlist/${item.id}`, { method: "DELETE" }, "Вы вышли из очереди.")));
     } else {
-      time.append(element("span", "", item.holdExpiresAt
-        ? `Резерв до ${timeFormat.format(new Date(item.holdExpiresAt))}` : "Подтверждено"));
+      const pending = item.approvalStatus === "pending";
+      const label = pending ? "На согласовании" : item.approvalStatus === "approved" ? "Одобрено"
+        : item.holdExpiresAt ? `Резерв до ${timeFormat.format(new Date(item.holdExpiresAt))}` : "Подтверждено";
+      time.append(element("span", pending ? "pill pending" : "", label));
       if (item.holdExpiresAt) {
-        actions.append(button("page-action small", "Подтвердить", () =>
-          updateBooking(`/api/bookings/${item.id}/confirm`, { method: "POST" }, "Бронирование подтверждено.")));
+        actions.append(button("page-action small", item.requiresApproval ? "Отправить заявку" : "Подтвердить", () =>
+          updateBooking(`/api/bookings/${item.id}/confirm`, { method: "POST" },
+            item.requiresApproval ? "Заявка отправлена на согласование." : "Бронирование подтверждено.")));
       }
-      actions.append(button("outline-action", item.holdExpiresAt ? "Отказаться" : "Отменить бронь", () =>
-        updateBooking(`/api/bookings/${item.id}`, { method: "DELETE" }, "Запись отменена.")));
+      const action = pending ? "Отозвать заявку" : item.holdExpiresAt ? "Отказаться" : "Отменить бронь";
+      actions.append(button("outline-action", action, () =>
+        updateBooking(`/api/bookings/${item.id}`, { method: "DELETE" }, pending ? "Заявка отозвана." : "Запись отменена.")));
     }
+    if (item.approvalReason) time.append(element("span", "decision-note", item.approvalReason));
     row.append(description, time, actions);
     return row;
   }));
@@ -300,8 +321,9 @@ function renderCatalog() {
     const row = element("div", "data-row catalog-row");
     const title = element("div", "data-title");
     title.append(element("strong", "", item.name), element("span", "", item.location));
-    row.append(title, element("span", `pill ${item.isArchived ? "past" : "available"}`, item.isArchived ? "В архиве" : "Активен"),
-      button("outline-action", "Изменить", () => editResource(item)));
+    const edit = button("outline-action", "Изменить", () => editResource(item));
+    edit.disabled = state.busy;
+    row.append(title, element("span", `pill ${item.isArchived ? "past" : "available"}`, item.isArchived ? "В архиве" : "Активен"), edit);
     return row;
   }) : [element("p", "list-empty", search ? "По запросу ничего не найдено." : "Добавьте первый ресурс.")]));
 
@@ -343,6 +365,7 @@ function editResource(item) {
   fields.type.value = item?.type ?? "other";
   fields.capacity.value = item?.capacity ?? "";
   fields.equipment.value = item?.equipment?.join(", ") ?? "";
+  fields.requiresApproval.checked = item?.requiresApproval ?? false;
   fields.isArchived.checked = item?.isArchived ?? false;
   section("resource-dialog").showModal();
 }
@@ -373,8 +396,11 @@ function bindWorkspace() {
     renderAgenda();
   });
   setInterval(() => {
-    if (!state.busy && currentScreen() === "mine" && (workspace.agenda?.waiting.length
-      || workspace.agenda?.upcoming.some(item => item.holdExpiresAt))) loadWorkspace();
+    if (state.busy) return;
+    const screen = currentScreen();
+    if (screen === "mine" && (workspace.agenda?.waiting.length
+      || workspace.agenda?.upcoming.some(item => item.holdExpiresAt || item.approvalStatus === "pending"))
+      || screen === "approvals" && approvalQueue.length) loadWorkspace();
   }, 4000);
   section("resource-search").addEventListener("input", renderCatalog);
   section("add-resource").addEventListener("click", () => editResource(null));
@@ -386,6 +412,7 @@ function bindWorkspace() {
     const equipment = data.get("equipment").split(",").map(item => item.trim()).filter(Boolean);
     const payload = {
       name: data.get("name"), location: data.get("location"), isArchived: data.has("isArchived"),
+      requiresApproval: data.has("requiresApproval"),
       details: { type: data.get("type"), capacity: data.get("capacity") ? Number(data.get("capacity")) : null, equipment }
     };
     const message = section("resource-error");

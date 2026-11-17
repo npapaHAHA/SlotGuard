@@ -35,7 +35,8 @@ internal static class AvailabilitySearch
 
         await using var snapshot = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
         var resources = await matches.OrderBy(item => item.SortOrder).ThenBy(item => item.Name).ThenBy(item => item.Id)
-            .Select(item => new ResourceMatch(item.Id, item.Name, item.Location, item.Type, item.Capacity, item.Equipment))
+            .Select(item => new ResourceMatch(item.Id, item.Name, item.Location, item.Type, item.Capacity, item.Equipment,
+                item.RequiresApproval))
             .ToArrayAsync(ct);
         if (resources.Length == 0)
             return Results.Ok(new SearchResult(requested, [], []));
@@ -72,7 +73,8 @@ internal static class AvailabilitySearch
     private static IResult InvalidTime() =>
         Results.Problem(statusCode: 400, title: "Выберите будущую дату и время из расписания.");
 
-    internal sealed record ResourceMatch(string Id, string Name, string Location, string Type, int? Capacity, string[] Equipment);
+    internal sealed record ResourceMatch(string Id, string Name, string Location, string Type, int? Capacity, string[] Equipment,
+        bool RequiresApproval);
     internal sealed record AvailableSlot(ResourceMatch Resource, DateTimeOffset StartsAt);
     internal sealed record SearchResult(DateTimeOffset Requested, AvailableSlot[] Exact, AvailableSlot[] Alternatives);
 }

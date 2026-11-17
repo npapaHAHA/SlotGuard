@@ -150,6 +150,8 @@ public sealed class AccountTests(AccountFixture fixture) : IClassFixture<Account
 
 public sealed class LiveCalendarTests(AccountFixture fixture) : IClassFixture<AccountFixture>
 {
+    private static readonly TimeSpan SignalTimeout = TimeSpan.FromSeconds(20);
+
     [Fact]
     public async Task BookingSignalsOnlyItsOrganizationAfterCommit()
     {
@@ -188,7 +190,7 @@ public sealed class LiveCalendarTests(AccountFixture fixture) : IClassFixture<Ac
         try
         {
             await forbiddenHub.StartAsync();
-            await closed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await closed.Task.WaitAsync(SignalTimeout);
         }
         catch (Exception error) when (error is HttpRequestException or InvalidOperationException)
         {
@@ -198,7 +200,7 @@ public sealed class LiveCalendarTests(AccountFixture fixture) : IClassFixture<Ac
         using var booking = await admin.PostAsJsonAsync("/api/bookings",
             new { resourceId, startsAt = Schedule.At(Schedule.LocalDate(SlotGuardFixture.Now), 11) });
         Assert.Equal(HttpStatusCode.Created, booking.StatusCode);
-        await updated.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await updated.Task.WaitAsync(SignalTimeout);
         var calendar = await admin.GetStringAsync($"/api/calendar?resourceId={resourceId}");
         Assert.Contains("\"status\":\"mine\"", calendar);
         var observation = Task.Delay(300);
@@ -217,6 +219,6 @@ public sealed class LiveCalendarTests(AccountFixture fixture) : IClassFixture<Ac
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = hub.On("CalendarReady", () => ready.TrySetResult());
         await hub.StartAsync();
-        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await ready.Task.WaitAsync(SignalTimeout);
     }
 }

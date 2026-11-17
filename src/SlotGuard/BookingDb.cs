@@ -68,6 +68,8 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : IdentityDbC
 
         var bookings = modelBuilder.Entity<Booking>();
         bookings.Property(booking => booking.MaintenanceReason).HasMaxLength(160);
+        bookings.Property(booking => booking.ApprovalStatus).HasMaxLength(16);
+        bookings.Property(booking => booking.ApprovalReason).HasMaxLength(240);
         bookings.HasOne<Resource>().WithMany().HasForeignKey(booking => booking.ResourceId)
             .OnDelete(DeleteBehavior.Restrict);
         bookings.HasIndex(booking => new { booking.ResourceId, booking.StartUtc })
@@ -76,6 +78,8 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : IdentityDbC
             .HasFilter("\"CancelledAt\" IS NULL");
         bookings.HasIndex(booking => booking.HoldExpiresAt)
             .HasFilter("\"CancelledAt\" IS NULL AND \"HoldExpiresAt\" IS NOT NULL");
+        bookings.HasIndex(booking => booking.StartUtc)
+            .HasFilter("\"ApprovalStatus\" = 'pending' AND \"CancelledAt\" IS NULL");
 
         var waitlist = modelBuilder.Entity<WaitlistEntry>();
         waitlist.HasOne<Resource>().WithMany().HasForeignKey(entry => entry.ResourceId)
@@ -128,6 +132,7 @@ public sealed record Resource(string Id, string Name, string Location, int SortO
     public string Type { get; init; } = ResourceTypes.Other;
     public int? Capacity { get; init; }
     public string[] Equipment { get; init; } = [];
+    public bool RequiresApproval { get; init; }
 }
 
 public sealed class WorkspaceActivity
@@ -151,6 +156,15 @@ public sealed class Booking
     public DateTimeOffset? CancelledAt { get; set; }
     public DateTimeOffset? HoldExpiresAt { get; set; }
     public string? MaintenanceReason { get; set; }
+    public string? ApprovalStatus { get; set; }
+    public string? ApprovalReason { get; set; }
+}
+
+internal static class BookingApproval
+{
+    public const string Pending = "pending";
+    public const string Approved = "approved";
+    public const string Rejected = "rejected";
 }
 
 public sealed class WaitlistEntry

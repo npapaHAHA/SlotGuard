@@ -9,7 +9,7 @@ internal sealed class WaitlistOptions
 }
 
 internal readonly record struct SlotKey(string ResourceId, DateTimeOffset StartsAt);
-internal sealed record CreatedBooking(Guid Id, string ResourceId, DateTimeOffset StartsAt);
+internal sealed record CreatedBooking(Guid Id, string ResourceId, DateTimeOffset StartsAt, string? ApprovalStatus = null);
 internal sealed record JoinedWaitlist(long Id);
 internal sealed record CreatedMaintenance(Guid Id, int Count);
 
@@ -28,8 +28,11 @@ internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<Wa
                 return Problem(409, "Этот слот уже занят.");
 
             var booking = NewBooking(slot, owner);
+            if (resource.RequiresApproval)
+                booking.ApprovalStatus = BookingApproval.Pending;
             db.Bookings.Add(booking);
-            return Results.Json(new CreatedBooking(booking.Id, booking.ResourceId, booking.StartUtc), statusCode: 201);
+            return Results.Json(new CreatedBooking(booking.Id, booking.ResourceId, booking.StartUtc, booking.ApprovalStatus),
+                statusCode: 201);
         }, ct);
 
     public Task<IResult> JoinWaitlist(SlotKey slot, Guid owner, CancellationToken ct) =>
@@ -84,13 +87,44 @@ internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<Wa
         if (slot is not { } key)
             return Problem(404, "Резерв не найден.");
 
-        return await InSlot(key, async (now, _) =>
+        return await InSlot(key, async (now, resource) =>
         {
             var active = await GetActiveBooking(key, now, ct);
             if (active?.Id != id || key.StartsAt <= now)
                 return Problem(409, "Резерв больше недоступен.");
 
-            active.HoldExpiresAt = null;
+            if (active.HoldExpiresAt is not null)
+            {
+                active.HoldExpiresAt = null;
+                if (resource.RequiresApproval)
+                    active.ApprovalStatus = BookingApproval.Pending;
+            }
+            return Results.NoContent();
+        }, ct);
+    }
+
+    public async Task<IResult> Decide(Guid id, string organizationId, string decision, string reason, string actor,
+        CancellationToken ct)
+    {
+        var resources = ResourceIds(organizationId);
+        var slot = await db.Bookings.AsNoTracking()
+            .Where(booking => booking.Id == id && booking.ApprovalStatus != null && resources.Contains(booking.ResourceId))
+            .Select(booking => (SlotKey?)new SlotKey(booking.ResourceId, booking.StartUtc))
+            .SingleOrDefaultAsync(ct);
+        if (slot is not { } key)
+            return Problem(404, "Заявка не найдена.");
+
+        return await InSlot(key, async (now, resource) =>
+        {
+            var booking = await db.Bookings.SingleAsync(item => item.Id == id, ct);
+            if (booking.ApprovalStatus != BookingApproval.Pending || booking.CancelledAt != null || key.StartsAt <= now)
+                return Problem(409, "Заявка больше не ожидает решения.");
+
+            booking.ApprovalStatus = decision;
+            booking.ApprovalReason = reason;
+            Audit.Add(db, resource, actor, $"booking.{decision}", reason, now);
+            if (decision == BookingApproval.Rejected)
+                await ReleaseAndOfferNext(key, booking, now, ct);
             return Results.NoContent();
         }, ct);
     }

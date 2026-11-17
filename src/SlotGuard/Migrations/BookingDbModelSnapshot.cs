@@ -228,6 +228,14 @@ namespace SlotGuard.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApprovalReason")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<string>("ApprovalStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTimeOffset?>("CancelledAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -252,6 +260,9 @@ namespace SlotGuard.Migrations
 
                     b.HasIndex("HoldExpiresAt")
                         .HasFilter("\"CancelledAt\" IS NULL AND \"HoldExpiresAt\" IS NOT NULL");
+
+                    b.HasIndex("StartUtc")
+                        .HasFilter("\"ApprovalStatus\" = 'pending' AND \"CancelledAt\" IS NULL");
 
                     b.HasIndex("ResourceId", "StartUtc")
                         .IsUnique()
@@ -446,6 +457,9 @@ namespace SlotGuard.Migrations
                         .IsRequired()
                         .HasColumnType("character varying(32)");
 
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -472,6 +486,7 @@ namespace SlotGuard.Migrations
                             Location = "Лаборатория А · кабинет 204",
                             Name = "Оптический микроскоп",
                             OrganizationId = "university",
+                            RequiresApproval = false,
                             SortOrder = 1,
                             Type = "equipment"
                         },
@@ -484,6 +499,7 @@ namespace SlotGuard.Migrations
                             Location = "Мастерская · кабинет 108",
                             Name = "Паяльная станция",
                             OrganizationId = "university",
+                            RequiresApproval = false,
                             SortOrder = 2,
                             Type = "equipment"
                         },
@@ -496,6 +512,7 @@ namespace SlotGuard.Migrations
                             Location = "Медиалаб · кабинет 312",
                             Name = "Студия записи",
                             OrganizationId = "university",
+                            RequiresApproval = false,
                             SortOrder = 3,
                             Type = "studio"
                         },
@@ -508,6 +525,7 @@ namespace SlotGuard.Migrations
                             Location = "Коворкинг · кабинет 403",
                             Name = "Переговорная",
                             OrganizationId = "coworking",
+                            RequiresApproval = false,
                             SortOrder = 1,
                             Type = "room"
                         },
@@ -520,6 +538,7 @@ namespace SlotGuard.Migrations
                             Location = "Коворкинг · кабинет 405",
                             Name = "Подкаст-студия",
                             OrganizationId = "coworking",
+                            RequiresApproval = false,
                             SortOrder = 2,
                             Type = "studio"
                         });

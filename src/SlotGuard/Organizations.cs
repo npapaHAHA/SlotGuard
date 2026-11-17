@@ -62,6 +62,10 @@ internal static class DemoAccounts
 
     public static Guid OwnerId(ClaimsPrincipal user) => Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    public static string LabelFor(Guid id) => id == UniversityAdmin ? "Администратор университета"
+        : id == CoworkingAdmin ? "Администратор коворкинга"
+        : $"Гость {id.ToString("N")[..4].ToUpperInvariant()}";
+
     public static async Task<IResult> Session(HttpContext context, IConfiguration config)
     {
         var enabled = !string.IsNullOrEmpty(config["DemoAccounts:Password"]);
@@ -88,19 +92,20 @@ internal static class DemoAccounts
 
         var profile = request.Login switch
         {
-            "university-admin" => (Id: UniversityAdmin, Label: "Администратор университета"),
-            "coworking-admin" => (Id: CoworkingAdmin, Label: "Администратор коворкинга"),
-            _ => default
+            "university-admin" => UniversityAdmin,
+            "coworking-admin" => CoworkingAdmin,
+            _ => Guid.Empty
         };
-        if (profile.Id == Guid.Empty || string.IsNullOrEmpty(request.Password) || request.Password.Length > 256
+        if (profile == Guid.Empty || string.IsNullOrEmpty(request.Password) || request.Password.Length > 256
             || !CryptographicOperations.FixedTimeEquals(
                 SHA256.HashData(Encoding.UTF8.GetBytes(expected)), SHA256.HashData(Encoding.UTF8.GetBytes(request.Password))))
         {
             return Results.Problem(statusCode: 401, title: "Неверный демо-аккаунт или пароль.");
         }
 
-        await SignIn(context, profile.Id, profile.Label);
-        return Describe(profile.Id, profile.Label, true);
+        var label = LabelFor(profile);
+        await SignIn(context, profile, label);
+        return Describe(profile, label, true);
     }
 
     private static Task SignIn(HttpContext context, Guid id, string? label = null)
@@ -112,7 +117,7 @@ internal static class DemoAccounts
     }
 
     private static IResult Describe(Guid id, string? label, bool enabled) =>
-        Results.Ok(new { label = label ?? $"Гость {id.ToString("N")[..4].ToUpperInvariant()}", demoEnabled = enabled,
+        Results.Ok(new { label = label ?? LabelFor(id), demoEnabled = enabled,
             isDemo = label is not null, isAccount = false });
 
     internal sealed record DemoLogin(string Login, string Password);

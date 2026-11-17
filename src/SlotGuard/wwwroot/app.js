@@ -10,6 +10,7 @@ const labels = {
   booked: "Занято",
   mine: "Моя бронь",
   held: "Ваш резерв",
+  pending: "На согласовании",
   maintenance: "Обслуживание",
   past: "Прошло"
 };
@@ -138,7 +139,7 @@ async function pollWaitlist(force = false) {
         ?.focus({ preventScroll: true });
     }
     const slot = selectedSlot();
-    if (JSON.stringify(slot) !== JSON.stringify(previousSlot)) {
+    if (JSON.stringify(slot) !== JSON.stringify(previousSlot) || calendar.requiresApproval !== previous.requiresApproval) {
       renderDetails();
       if (slot?.status === "held" && previousSlot?.status !== "held")
         ui.status.textContent = "Слот зарезервирован для вас.";
@@ -408,11 +409,18 @@ function renderSlotActions(section, slot) {
 
   const booking = `/api/bookings/${slot.bookingId}`;
   const remove = { method: "DELETE" };
+  const requiresApproval = state.calendar?.requiresApproval;
+  const approvalMessage = requiresApproval ? "Заявка отправлена на согласование." : "Бронирование подтверждено.";
 
   switch (slot.status) {
     case "available":
-      action("button primary", "Забронировать", "/api/bookings", bookingPayload(slot), "Бронирование подтверждено.");
+      action("button primary", requiresApproval ? "Отправить заявку" : "Забронировать", "/api/bookings",
+        bookingPayload(slot), "Бронирование подтверждено.");
       if (isAdmin()) section.append(maintenanceForm(slot));
+      break;
+    case "pending":
+      section.append(element("p", "details-date", "Статус и причина решения появятся в «Моих записях»."));
+      action("button secondary cancel", "Отозвать заявку", booking, remove, "Заявка отозвана.");
       break;
     case "mine":
       action("button secondary cancel", "Отменить бронь", booking, remove, "Бронь отменена.");
@@ -429,8 +437,8 @@ function renderSlotActions(section, slot) {
       const countdown = element("p", "details-date hold-countdown");
       countdown.dataset.expiresAt = slot.holdExpiresAt;
       section.append(countdown);
-      const confirm = action("button primary", "Подтвердить бронь", `${booking}/confirm`,
-        { method: "POST" }, "Бронирование подтверждено.");
+      const confirm = action("button primary", requiresApproval ? "Отправить заявку" : "Подтвердить бронь", `${booking}/confirm`,
+        { method: "POST" }, approvalMessage);
       confirm.dataset.holdConfirm = "";
       action("button secondary cancel", "Отказаться от резерва", booking, remove, "Резерв освобождён.");
       break;
@@ -492,8 +500,8 @@ function updateBooking(url, options, message) {
   return run(async () => {
     state.race = null;
     try {
-      await api(url, options);
-      ui.status.textContent = message;
+      const result = await api(url, options);
+      ui.status.textContent = result?.approvalStatus === "pending" ? "Заявка отправлена на согласование." : message;
     } finally {
       await refreshCalendar();
       await loadWorkspace();

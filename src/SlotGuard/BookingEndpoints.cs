@@ -18,6 +18,7 @@ internal static class BookingEndpoints
         var api = root.MapGroup("").AddEndpointFilter<OrganizationFilter>();
         api.MapWorkspaceEndpoints();
         api.MapTeamEndpoints();
+        api.MapApprovalEndpoints();
         api.MapGet("/resources", GetResources);
         api.MapGet("/calendar", GetCalendar);
         api.MapGet("/availability", AvailabilitySearch.Find);
@@ -68,7 +69,11 @@ internal static class BookingEndpoints
         Results.Ok(await scope.Resources(db).AsNoTracking()
             .Where(resource => !resource.IsArchived)
             .OrderBy(resource => resource.SortOrder).ThenBy(resource => resource.Name).ThenBy(resource => resource.Id)
-            .Select(resource => new { resource.Id, resource.Name, resource.Location, resource.Type, resource.Capacity, resource.Equipment })
+            .Select(resource => new
+            {
+                resource.Id, resource.Name, resource.Location, resource.Type, resource.Capacity,
+                resource.Equipment, resource.RequiresApproval
+            })
             .ToListAsync(ct));
 
     private static async Task<IResult> GetNotifications(BookingDb db, OrganizationScope scope,
@@ -116,7 +121,9 @@ internal static class BookingEndpoints
         var monday = week ?? firstWeek;
         if (monday < firstWeek || monday > lastWeek || monday.DayOfWeek != DayOfWeek.Monday)
             return Results.Problem(statusCode: 400, title: "Выберите понедельник в пределах календаря.");
-        if (!await scope.Resources(db).AnyAsync(resource => resource.Id == resourceId && !resource.IsArchived, ct))
+        var requiresApproval = await scope.Resources(db).Where(resource => resource.Id == resourceId && !resource.IsArchived)
+            .Select(resource => (bool?)resource.RequiresApproval).SingleOrDefaultAsync(ct);
+        if (requiresApproval is null)
             return Results.NotFound();
 
         var start = Schedule.At(monday, 0);
@@ -155,6 +162,7 @@ internal static class BookingEndpoints
                     : booking is null ? "available"
                     : block is not null ? "maintenance"
                     : ownBooking is null ? "booked"
+                    : ownBooking.ApprovalStatus == BookingApproval.Pending ? "pending"
                     : ownBooking.HoldExpiresAt is null ? "mine" : "held";
                 return new CalendarSlot(startsAt, status, ownBooking?.Id, ownBooking?.HoldExpiresAt,
                     entry?.Id, entry?.Position, block?.MaintenanceReason, scope.IsAdmin ? block?.Id : null);
@@ -162,7 +170,7 @@ internal static class BookingEndpoints
             return new { date, slots };
         });
 
-        return Results.Ok(new { today, week = monday, firstWeek, lastWeek, days });
+        return Results.Ok(new { today, week = monday, firstWeek, lastWeek, requiresApproval, days });
     }
 
     private static Task<IResult> BookSlot(

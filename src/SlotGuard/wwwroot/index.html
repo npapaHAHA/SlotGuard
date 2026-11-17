@@ -10,9 +10,11 @@
   <link rel="stylesheet" href="/workspace.css">
   <link rel="stylesheet" href="/accounts.css">
   <link rel="stylesheet" href="/availability.css">
+  <link rel="stylesheet" href="/approvals.css">
   <script src="/vendor/signalr/signalr.min.js" defer></script>
   <script src="/workspace.js" defer></script>
   <script src="/availability.js" defer></script>
+  <script src="/approvals.js" defer></script>
   <script src="/accounts.js" defer></script>
   <script src="/live-calendar.js" defer></script>
   <script src="/app.js" defer></script>
@@ -28,6 +30,7 @@
       <a href="#availability" data-nav="availability"><span class="symbol" aria-hidden="true">search</span>Поиск слота</a>
       <a href="#mine" data-nav="mine"><span class="symbol" aria-hidden="true">event_available</span>Мои записи</a>
       <a href="#manage" data-nav="manage" hidden><span class="symbol" aria-hidden="true">settings</span>Управление</a>
+      <a href="#approvals" data-nav="approvals" hidden><span class="symbol" aria-hidden="true">check_circle</span>Заявки</a>
       <a href="#team" data-nav="team" hidden><span class="symbol" aria-hidden="true">group</span>Команда</a>
     </nav>
   </aside>
@@ -166,6 +169,15 @@
         <div id="activity-content"></div>
       </section>
     </section>
+    <section data-screen="approvals" aria-labelledby="approvals-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="approvals-title">Заявки на бронирование</h1>
+          <p class="intro">Проверьте запросы участников и укажите причину решения.</p></div>
+      </div>
+      <div id="approval-message" class="panel approval-message" role="status" hidden></div>
+      <div class="approval-list-heading"><h2>Ожидают решения</h2><span id="approval-count" class="pill pending" hidden></span></div>
+      <div id="approval-list" class="approval-list"></div>
+    </section>
     <section data-screen="team" aria-labelledby="team-title" hidden>
       <div class="page-heading">
         <div><h1 id="team-title">Команда</h1><p id="team-organization" class="intro"></p></div>
@@ -232,6 +244,7 @@
             <li><span class="dot booked"></span>Занято</li>
             <li><span class="dot mine"></span>Моя бронь</li>
             <li><span class="dot held"></span>Резерв</li>
+            <li><span class="dot pending"></span>На согласовании</li>
             <li><span class="dot maintenance"></span>Обслуживание</li>
           </ul>
           <span class="timezone">МСК · UTC+3</span>
@@ -313,6 +326,7 @@
         <label>Вместимость<input name="capacity" type="number" min="1" max="10000" placeholder="Человек"></label>
       </div>
       <label>Оснащение через запятую<input name="equipment" maxlength="520" placeholder="Экран, доска, видеосвязь"></label>
+      <label class="checkbox-label"><input name="requiresApproval" type="checkbox"> Брони требуют согласования</label>
       <label class="checkbox-label" id="archive-field"><input name="isArchived" type="checkbox"> В архиве</label>
       <p id="resource-error" class="form-message error" role="alert" hidden></p>
       <div class="login-actions">
