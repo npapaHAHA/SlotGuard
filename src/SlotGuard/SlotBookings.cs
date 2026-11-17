@@ -13,8 +13,10 @@ internal sealed record CreatedBooking(Guid Id, string ResourceId, DateTimeOffset
 internal sealed record JoinedWaitlist(long Id);
 internal sealed record CreatedMaintenance(Guid Id, int Count);
 
-internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<WaitlistOptions> options)
+internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<WaitlistOptions> options, CalendarUpdates updates)
 {
+    private bool releasedHold;
+
     public Task<IResult> Book(SlotKey slot, Guid owner, CancellationToken ct) =>
         InSlot(slot, async (now, resource) =>
         {
@@ -139,6 +141,7 @@ internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<Wa
         Audit.Add(db, resource, actor, "maintenance.created", reason, now);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+        await updates.Publish(resource.OrganizationId);
         return Results.Json(new CreatedMaintenance(blocks[0].Id, blocks.Length), statusCode: 201);
     }
 
@@ -183,10 +186,13 @@ internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<Wa
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var resource = await LockResource(slot.ResourceId, ct);
         await SlotLock.Acquire(db, slot, ct);
+        releasedHold = false;
         var result = await operation(clock.GetUtcNow(), resource);
-        await db.SaveChangesAsync(ct);
+        var changed = await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         db.ChangeTracker.Clear();
+        if (changed != 0 || releasedHold || result is IStatusCodeHttpResult { StatusCode: 201 })
+            await updates.Publish(resource.OrganizationId);
         return result;
     }
 
@@ -208,6 +214,7 @@ internal sealed class SlotBookings(BookingDb db, TimeProvider clock, IOptions<Wa
     private async Task<Booking?> ReleaseAndOfferNext(SlotKey slot, Booking active, DateTimeOffset now, CancellationToken ct)
     {
         active.CancelledAt = now;
+        releasedHold = true;
         // Retire the old row before inserting its replacement under the same unique index.
         await db.SaveChangesAsync(ct);
         if (slot.StartsAt <= now)

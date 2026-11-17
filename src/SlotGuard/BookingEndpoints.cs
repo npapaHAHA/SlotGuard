@@ -17,6 +17,7 @@ internal static class BookingEndpoints
 
         var api = root.MapGroup("").AddEndpointFilter<OrganizationFilter>();
         api.MapWorkspaceEndpoints();
+        api.MapTeamEndpoints();
         api.MapGet("/resources", GetResources);
         api.MapGet("/calendar", GetCalendar);
         api.MapGet("/notifications", GetNotifications);

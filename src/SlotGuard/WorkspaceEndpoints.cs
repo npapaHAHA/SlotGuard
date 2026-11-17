@@ -183,7 +183,8 @@ internal static class WorkspaceEndpoints
     private static IResult InvalidResource() =>
         Results.Problem(statusCode: 400, title: "Укажите название до 100 символов и расположение до 140 символов.");
 
-    internal static string Actor(ClaimsPrincipal user) => user.Identity?.Name ?? "Администратор";
+    internal static string Actor(ClaimsPrincipal user) => user.FindFirstValue(ClaimTypes.GivenName)
+        ?? user.Identity?.Name ?? "Администратор";
     private sealed record ResourceInput(string? Name, string? Location, bool IsArchived = false);
     private sealed record Occupancy(string ResourceId, DateTimeOffset StartsAt, string Status);
     private sealed record Totals(int Free, int Booked, int Held, int Maintenance);

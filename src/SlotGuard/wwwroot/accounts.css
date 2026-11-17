@@ -1,0 +1,56 @@
+.welcome {
+  min-height: min(540px, 75vh);
+  display: grid;
+  align-items: center;
+  padding: clamp(26px, 7vw, 88px);
+  background: radial-gradient(ellipse at 100% 0, #c6e9df 0%, transparent 52%), #fff;
+}
+.welcome-content { max-width: 540px; }
+.welcome h1 { margin: 24px 0 12px; }
+.welcome p { max-width: 390px; color: #45646f; line-height: 1.6; margin: 0 0 25px; }
+.account-dialog { width: min(440px, calc(100vw - 30px)); padding: clamp(20px, 5vw, 32px); }
+.account-dialog-title { display: flex; justify-content: space-between; align-items: center; }
+.account-dialog .brand-icon, .welcome .brand-icon {
+  width: 42px;
+  height: 42px;
+  background: #c7eee0;
+  color: #0f564b;
+}
+.account-dialog h2 { margin: 6px 0 0; font-size: 1.55rem; }
+.account-dialog p:not(.form-message), .invite-card > p { margin: 0; color: #47606d; line-height: 1.55; }
+.account-dialog button[type="submit"] { width: 100%; justify-content: center; min-height: 42px; }
+#account-fields { display: grid; gap: 10px; }
+#account-fields:empty { display: none; }
+#account-fields small { color: #536c76; line-height: 1.45; }
+#account-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.account-link { background: none; border: 0; color: #126357; cursor: pointer; padding: 3px 0; font-weight: 650; text-align: left; }
+.account-link:hover { text-decoration: underline; }
+.account-close { font-size: 1.25rem; }
+.invite-banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 20px; margin: 0 0 18px; border-color: #a1d6c7; background: #eefaf5; }
+.invite-banner p { margin: 5px 0 0; color: #365864; overflow-wrap: anywhere; }
+.invite-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.invite-card h2 { margin: 0 0 8px; }
+.invite-card form { margin-top: 16px; }
+.team-pending { margin-top: 16px; }
+.team-row, .team-identity { display: flex; align-items: center; gap: 13px; }
+.team-row { justify-content: space-between; flex-wrap: wrap; }
+.team-identity { min-width: 0; overflow-wrap: anywhere; }
+.team-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: #e2f3ee;
+  color: #14554a;
+  font-weight: 750;
+}
+.live-status { display: inline-flex; align-items: center; gap: 6px; color: #526d78; background: #e8eff2; padding: 7px 11px; border-radius: 99px; font-size: .75rem; white-space: nowrap; }
+.live-status[data-connected="true"] { color: #1b6054; background: #e0f3ea; }
+.live-status::before { content: ""; background: currentColor; width: 6px; height: 6px; border-radius: 50%; }
+@media (max-width: 600px) {
+  .invite-banner { align-items: flex-start; flex-direction: column; }
+  .account-controls { flex-wrap: wrap; justify-content: flex-end; }
+  .welcome { min-height: 340px; }
+}

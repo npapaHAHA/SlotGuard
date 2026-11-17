@@ -1,7 +1,7 @@
 const workspace = { week: null, agendaFilter: "upcoming", agenda: null, catalog: [], editing: null };
 let workspaceRequest = 0;
 
-const routes = new Set(["overview", "calendar", "mine", "manage"]);
+const routes = new Set(["overview", "calendar", "mine", "manage", "team"]);
 const activityLabels = {
   "resource.created": "Добавлен ресурс",
   "resource.updated": "Обновлён ресурс",
@@ -24,7 +24,9 @@ function section(id) {
 }
 
 function currentScreen() {
+  if (state.session?.isAccount && !state.organizationId) return "welcome";
   const route = location.hash.slice(1);
+  if (route === "team" && (!isAdmin() || !state.session?.isAccount)) return "overview";
   return routes.has(route) && (route !== "manage" || isAdmin()) ? route : "overview";
 }
 
@@ -32,7 +34,8 @@ function renderWorkspaceScreen() {
   const route = currentScreen();
   for (const pane of document.querySelectorAll("[data-screen]")) pane.hidden = pane.dataset.screen !== route;
   for (const link of document.querySelectorAll("[data-nav]")) {
-    link.hidden = link.dataset.nav === "manage" && !isAdmin();
+    link.hidden = route === "welcome" || (["manage", "team"].includes(link.dataset.nav) && !isAdmin())
+      || (link.dataset.nav === "team" && !state.session?.isAccount);
     if (link.dataset.nav === route) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
@@ -52,6 +55,9 @@ function resetWorkspace() {
   section("agenda-content").replaceChildren();
   section("catalog-content").replaceChildren();
   section("activity-content").replaceChildren();
+  section("team-members").replaceChildren();
+  section("team-invitations").replaceChildren();
+  section("team-message").hidden = true;
   section("overview-period").textContent = "Загрузка расписания…";
   section("service-message").hidden = true;
   section("service-form").elements.date.value = "";
@@ -76,6 +82,9 @@ async function loadWorkspace() {
         workspace.agenda = agenda;
         renderAgenda();
       }
+    } else if (route === "team") {
+      const team = await api("/api/team");
+      if (requestId === workspaceRequest) renderTeam(team);
     } else {
       const [catalog, activity] = await Promise.all([api("/api/workspace/resources"), api("/api/workspace/activity")]);
       if (requestId === workspaceRequest) {

@@ -68,7 +68,9 @@ internal static class DemoAccounts
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id))
             return await StartGuest(context, config);
 
-        return Describe(id, context.User.Identity?.Name, enabled);
+        return AccountSessions.IsAccount(context.User)
+            ? AccountSessions.Describe(context.User.FindFirstValue(ClaimTypes.GivenName)!, enabled)
+            : Describe(id, context.User.Identity?.Name, enabled);
     }
 
     public static async Task<IResult> StartGuest(HttpContext context, IConfiguration config)
@@ -110,7 +112,8 @@ internal static class DemoAccounts
     }
 
     private static IResult Describe(Guid id, string? label, bool enabled) =>
-        Results.Ok(new { label = label ?? $"Гость {id.ToString("N")[..4].ToUpperInvariant()}", demoEnabled = enabled, isDemo = label is not null });
+        Results.Ok(new { label = label ?? $"Гость {id.ToString("N")[..4].ToUpperInvariant()}", demoEnabled = enabled,
+            isDemo = label is not null, isAccount = false });
 
     internal sealed record DemoLogin(string Login, string Password);
 }

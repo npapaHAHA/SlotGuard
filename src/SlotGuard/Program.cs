@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 using SlotGuard;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +21,27 @@ builder.Services.AddOptions<WaitlistOptions>()
     .ValidateOnStart();
 builder.Services.AddScoped<SlotBookings>();
 builder.Services.AddScoped<OrganizationScope>();
+builder.Services.AddIdentityCore<Account>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedEmail = true;
+        options.Password.RequiredLength = 10;
+    })
+    .AddEntityFrameworkStores<BookingDb>()
+    .AddClaimsPrincipalFactory<AccountPrincipalFactory>()
+    .AddSignInManager()
+    .AddDefaultTokenProviders();
+builder.Services.AddOptions<WorkspaceMailOptions>().BindConfiguration("Mail");
+builder.Services.AddScoped<IWorkspaceMail, SmtpWorkspaceMail>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("account", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+});
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<CalendarUpdates>();
 builder.Services.AddHostedService<HoldExpirationWorker>();
 builder.Services.AddOptions<RabbitMqOptions>()
     .BindConfiguration("RabbitMq")
@@ -35,16 +59,27 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "SlotGuard.Session";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
-        options.Events.OnValidatePrincipal = context =>
+        options.Events.OnValidatePrincipal = async context =>
         {
-            var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-            if (context.Principal?.Identity?.Name is not null && string.IsNullOrEmpty(config["DemoAccounts:Password"]))
+            var services = context.HttpContext.RequestServices;
+            if (AccountSessions.IsAccount(context.Principal))
+            {
+                services.GetRequiredService<SignInManager<Account>>().AuthenticationScheme =
+                    CookieAuthenticationDefaults.AuthenticationScheme;
+                await SecurityStampValidator.ValidatePrincipalAsync(context);
+            }
+            else if (context.Principal?.Identity?.Name is not null
+                && string.IsNullOrEmpty(services.GetRequiredService<IConfiguration>()["DemoAccounts:Password"]))
                 context.RejectPrincipal();
-            return Task.CompletedTask;
         };
         options.Events.OnRedirectToLogin = context =>
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return Task.CompletedTask;
         };
     });
@@ -62,12 +97,21 @@ await using (var scope = app.Services.CreateAsyncScope())
     await scope.ServiceProvider.GetRequiredService<BookingDb>().Database.MigrateAsync();
 
 app.UseExceptionHandler();
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapOpenApi();
 app.MapBookingEndpoints();
+app.MapAccountEndpoints();
+app.MapHub<CalendarHub>("/hubs/calendar", options => options.CloseOnAuthenticationExpiration = true)
+    .RequireAuthorization();
 app.Run();
 
 public partial class Program;

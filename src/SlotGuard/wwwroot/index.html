@@ -8,7 +8,11 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/accounts.css">
+  <script src="/vendor/signalr/signalr.min.js" defer></script>
   <script src="/workspace.js" defer></script>
+  <script src="/accounts.js" defer></script>
+  <script src="/live-calendar.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -21,6 +25,7 @@
       <a href="#calendar" data-nav="calendar"><span aria-hidden="true">▦</span>Календарь</a>
       <a href="#mine" data-nav="mine"><span aria-hidden="true">✓</span>Мои записи</a>
       <a href="#manage" data-nav="manage" hidden><span aria-hidden="true">⚙</span>Управление</a>
+      <a href="#team" data-nav="team" hidden><span aria-hidden="true">♙</span>Команда</a>
     </nav>
   </aside>
   <div class="app-main">
@@ -32,13 +37,30 @@
         <span id="organization-role" class="guest"></span>
       </div>
       <div class="account-controls">
+        <button type="button" id="create-organization" class="icon-button today-button" hidden>Новая организация</button>
         <span class="guest" id="guest" hidden></span>
+        <button type="button" id="account-button" class="page-action" hidden>Войти</button>
         <button type="button" id="session-button" class="icon-button today-button" hidden>Демо-вход</button>
       </div>
     </div>
   </header>
   <main class="shell" id="main-content" tabindex="-1">
     <div id="notice" class="notice" role="alert" hidden></div>
+    <div id="invite-banner" class="panel invite-banner" hidden>
+      <div><strong>Приглашение в организацию</strong><p id="invite-message"></p></div>
+      <div class="invite-actions">
+        <button type="button" id="accept-invite" class="page-action">Принять</button>
+        <button type="button" id="dismiss-invite" class="icon-button today-button">Закрыть</button>
+      </div>
+    </div>
+    <section data-screen="welcome" class="panel welcome" aria-labelledby="welcome-title" hidden>
+      <div class="welcome-content">
+        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <h1 id="welcome-title">Создайте рабочее пространство</h1>
+        <p>Добавьте переговорные или оборудование, настройте расписание и пригласите коллег.</p>
+        <button type="button" id="welcome-create" class="page-action">Создать организацию</button>
+      </div>
+    </section>
     <section id="notification-panel" class="panel notification-panel" aria-labelledby="notifications-title" hidden>
       <h2 id="notifications-title">Уведомления о резерве</h2>
       <div id="notifications" class="notification-list" aria-live="polite"></div>
@@ -96,9 +118,34 @@
         <div id="activity-content"></div>
       </section>
     </section>
+    <section data-screen="team" aria-labelledby="team-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="team-title">Команда</h1><p id="team-organization" class="intro"></p></div>
+      </div>
+      <div class="management-grid">
+        <section class="panel listing">
+          <div class="section-heading"><h2>Участники</h2><span id="team-count"></span></div>
+          <div id="team-members"></div>
+        </section>
+        <section class="panel listing invite-card">
+          <h2>Пригласить коллегу</h2>
+          <p>Ссылка действует 48 часов. Коллега войдёт с указанным email и получит роль участника.</p>
+          <form class="workspace-form" id="team-invite-form">
+            <label>Email<input type="email" name="email" required maxlength="254" autocomplete="off" placeholder="name@example.com"></label>
+            <button class="page-action" type="submit">Отправить приглашение</button>
+            <p class="form-message" id="team-message" role="status" hidden></p>
+          </form>
+        </section>
+      </div>
+      <section class="panel listing team-pending">
+        <div class="section-heading"><h2>Ожидают ответа</h2></div>
+        <div id="team-invitations"></div>
+      </section>
+    </section>
     <section data-screen="calendar" aria-labelledby="booking-title" hidden>
     <div class="page-heading">
       <div><h1 id="booking-title">Календарь</h1><p class="intro">Выберите ресурс и время бронирования.</p></div>
+      <span id="live-status" class="live-status" hidden></span>
     </div>
     <section class="resources-section" aria-labelledby="resources-title">
       <h2 id="resources-title">Ресурсы</h2>
@@ -148,6 +195,33 @@
   </main>
   </div>
   </div>
+  <dialog id="account-dialog" class="panel login-dialog account-dialog" aria-labelledby="account-title">
+    <form class="workspace-form" id="account-form">
+      <div class="account-dialog-title">
+        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <button type="button" class="icon-button today-button account-close" aria-label="Закрыть" data-close-dialog>×</button>
+      </div>
+      <h2 id="account-title"></h2>
+      <p id="account-description"></p>
+      <div id="account-fields"></div>
+      <p id="account-message" class="form-message" role="status" hidden></p>
+      <button type="submit" id="account-submit" class="page-action"></button>
+      <div id="account-links"></div>
+    </form>
+  </dialog>
+  <dialog id="organization-dialog" class="panel login-dialog account-dialog" aria-labelledby="organization-title">
+    <form class="workspace-form" id="organization-form">
+      <div class="account-dialog-title">
+        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <button type="button" class="icon-button today-button account-close" aria-label="Закрыть" data-close-dialog>×</button>
+      </div>
+      <h2 id="organization-title">Новая организация</h2>
+      <p>Вы станете администратором и сможете добавлять ресурсы и участников.</p>
+      <label>Название<input name="name" required maxlength="100" autofocus placeholder="Например, Студия Север"></label>
+      <p class="form-message error" id="organization-error" role="alert" hidden></p>
+      <button type="submit" class="page-action">Создать организацию</button>
+    </form>
+  </dialog>
   <dialog id="login-dialog" class="panel login-dialog" aria-labelledby="login-title">
     <form id="login-form" class="login-form">
       <h2 id="login-title">Демо-вход</h2>

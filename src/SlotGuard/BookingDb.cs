@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace SlotGuard;
 
-public sealed class BookingDb(DbContextOptions<BookingDb> options) : DbContext(options)
+public sealed class BookingDb(DbContextOptions<BookingDb> options) : IdentityDbContext<Account, IdentityRole<Guid>, Guid>(options)
 {
     public const string ActiveSlotIndex = "ux_bookings_active_slot";
 
@@ -14,9 +16,11 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : DbContext(o
     public DbSet<HoldOutboxEvent> HoldOutbox => Set<HoldOutboxEvent>();
     public DbSet<HoldNotification> HoldNotifications => Set<HoldNotification>();
     public DbSet<WorkspaceActivity> WorkspaceActivities => Set<WorkspaceActivity>();
+    internal DbSet<OrganizationInvitation> Invitations => Set<OrganizationInvitation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         var organizations = modelBuilder.Entity<Organization>();
         organizations.HasKey(organization => organization.Id);
         organizations.Property(organization => organization.Id).HasMaxLength(32);
@@ -79,6 +83,13 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : DbContext(o
         var activities = modelBuilder.Entity<WorkspaceActivity>();
         activities.HasOne<Organization>().WithMany().HasForeignKey(item => item.OrganizationId);
         activities.HasIndex(item => new { item.OrganizationId, item.Id });
+
+        var invitations = modelBuilder.Entity<OrganizationInvitation>();
+        invitations.Property(item => item.Email).HasMaxLength(254);
+        invitations.Property(item => item.TokenHash).HasMaxLength(64);
+        invitations.HasIndex(item => item.TokenHash).IsUnique();
+        invitations.HasIndex(item => new { item.OrganizationId, item.ExpiresAt });
+        invitations.HasOne<Organization>().WithMany().HasForeignKey(item => item.OrganizationId);
     }
 }
 

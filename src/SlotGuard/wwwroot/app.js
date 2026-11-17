@@ -59,7 +59,8 @@ async function api(url, options, organizationId) {
     const fallback = {
       401: "Сеанс завершился. Обновите страницу.",
       403: "Для этого действия нужны права администратора.",
-      404: "Ресурс недоступен в этой организации."
+      404: "Ресурс недоступен в этой организации.",
+      429: "Слишком много запросов. Повторите через минуту."
     }[response.status] ?? "Сервер не смог выполнить запрос.";
     const error = new Error(problem.title || fallback);
     error.conflicts = problem.conflicts;
@@ -107,9 +108,10 @@ async function loadCalendar(resourceId, week, retainSelection = false, organizat
   if (!retainSelection) state.race = null;
 }
 
-async function pollWaitlist() {
+async function pollWaitlist(force = false) {
   const previous = state.calendar;
-  if (polling || state.busy || !allSlots().some(slot => slot.waitlistId || slot.status === "held")) return;
+  if (!previous || polling || state.busy ||
+      (!force && !allSlots().some(slot => slot.waitlistId || slot.status === "held"))) return;
 
   polling = true;
   try {
@@ -218,6 +220,8 @@ function render() {
   for (const control of ui.notifications.querySelectorAll("button"))
     control.disabled = state.busy;
   renderOrganization();
+  renderAccountControls();
+  renderLiveStatus();
   renderWorkspaceScreen();
   renderResources();
   renderCalendar();
@@ -227,7 +231,7 @@ function render() {
 function renderOrganization() {
   const session = state.session;
   const organization = state.organizations.find(item => item.id === state.organizationId);
-  ui["session-button"].hidden = !session?.demoEnabled;
+  ui["session-button"].hidden = !session?.demoEnabled || session.isAccount;
   ui["session-button"].textContent = session?.isDemo ? "Выйти" : "Демо-вход";
   ui["session-button"].disabled = state.busy;
   ui["organization-controls"].hidden = !organization;
@@ -473,13 +477,16 @@ async function enterOrganization(id) {
   else Object.assign(state, { resourceId: null, calendar: null, selected: null, race: null });
   state.resources = resources;
   state.organizationId = id;
+  sessionStorage.setItem("slotguard.organization", id);
   renderNotifications([]);
   resetWorkspace();
   await loadWorkspace();
+  connectCalendar(id);
   scrollSelectionIntoView();
 }
 
-async function enterSession(session) {
+async function enterSession(session, preferredOrganization = sessionStorage.getItem("slotguard.organization")) {
+  disconnectCalendar();
   Object.assign(state, {
     session, organizations: [], organizationId: null,
     resources: [], resourceId: null, calendar: null, selected: null, race: null
@@ -490,8 +497,9 @@ async function enterSession(session) {
   resetWorkspace();
   render();
   state.organizations = await api("/api/organizations");
-  if (state.organizations.length === 0) throw new Error("Нет доступных организаций.");
-  await enterOrganization(state.organizations[0].id);
+  const organization = state.organizations.find(item => item.id === preferredOrganization) ?? state.organizations[0];
+  if (organization) await enterOrganization(organization.id);
+  else render();
 }
 
 function start() {
@@ -535,8 +543,9 @@ ui.prev.addEventListener("click", () => changeCalendar(state.resourceId, isoPlus
 ui.next.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, 7)));
 ui.today.addEventListener("click", () => changeCalendar(state.resourceId, state.calendar.firstWeek));
 ui["race-button"].addEventListener("click", raceForSlot);
-setInterval(pollWaitlist, 2000);
+setInterval(() => { if (!liveReady) pollWaitlist(); }, 2000);
 setInterval(pollNotifications, 2000);
 setInterval(updateCountdown, 1000);
 bindWorkspace();
+bindAccounts();
 start();

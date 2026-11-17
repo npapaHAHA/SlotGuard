@@ -61,11 +61,15 @@ public class SlotGuardFixture : IAsyncLifetime
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(_clock);
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
+                ConfigureServices(services);
             });
         });
     }
 
     protected virtual void ConfigureSettings(Dictionary<string, string?> settings) { }
+    protected virtual void ConfigureServices(IServiceCollection services) { }
+
+    public HttpMessageHandler CreateHandler() => _host!.Server.CreateHandler();
 
     public virtual async Task DisposeAsync()
     {
