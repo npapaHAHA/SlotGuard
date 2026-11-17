@@ -1,7 +1,7 @@
 const workspace = { week: null, agendaFilter: "upcoming", agenda: null, catalog: [], editing: null };
 let workspaceRequest = 0;
 
-const routes = new Set(["overview", "calendar", "mine", "manage", "team"]);
+const routes = new Set(["overview", "calendar", "availability", "mine", "manage", "team"]);
 const activityLabels = {
   "resource.created": "Добавлен ресурс",
   "resource.updated": "Обновлён ресурс",
@@ -44,6 +44,7 @@ function renderWorkspaceScreen() {
   for (const control of service.elements) control.disabled = serviceUnavailable;
   section("resource-form").querySelector('button[type="submit"]').disabled = state.busy;
   section("add-resource").disabled = state.busy;
+  renderAvailabilityControls();
 }
 
 function resetWorkspace() {
@@ -64,13 +65,14 @@ function resetWorkspace() {
   section("resource-search").value = "";
   const dialog = section("resource-dialog");
   if (dialog.open) dialog.close();
+  resetAvailability();
   renderWorkspaceScreen();
 }
 
 async function loadWorkspace() {
   const route = currentScreen();
   const requestId = ++workspaceRequest;
-  if (!state.organizationId || route === "calendar") return;
+  if (!state.organizationId || route === "calendar" || route === "availability") return;
   try {
     if (route === "overview") {
       const suffix = workspace.week ? `?week=${encodeURIComponent(workspace.week)}` : "";
@@ -338,6 +340,9 @@ function editResource(item) {
   const fields = section("resource-form").elements;
   fields.name.value = item?.name ?? "";
   fields.location.value = item?.location ?? "";
+  fields.type.value = item?.type ?? "other";
+  fields.capacity.value = item?.capacity ?? "";
+  fields.equipment.value = item?.equipment?.join(", ") ?? "";
   fields.isArchived.checked = item?.isArchived ?? false;
   section("resource-dialog").showModal();
 }
@@ -360,7 +365,8 @@ function bindWorkspace() {
   });
   window.addEventListener("hashchange", () => {
     renderWorkspaceScreen();
-    loadWorkspace();
+    if (currentScreen() === "availability") refreshAvailability();
+    else loadWorkspace();
   });
   for (const control of document.querySelectorAll("[data-agenda]")) control.addEventListener("click", () => {
     workspace.agendaFilter = control.dataset.agenda;
@@ -377,7 +383,11 @@ function bindWorkspace() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const payload = { name: data.get("name"), location: data.get("location"), isArchived: data.has("isArchived") };
+    const equipment = data.get("equipment").split(",").map(item => item.trim()).filter(Boolean);
+    const payload = {
+      name: data.get("name"), location: data.get("location"), isArchived: data.has("isArchived"),
+      details: { type: data.get("type"), capacity: data.get("capacity") ? Number(data.get("capacity")) : null, equipment }
+    };
     const message = section("resource-error");
     message.hidden = true;
     run(async () => {

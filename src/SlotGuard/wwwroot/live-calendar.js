@@ -17,6 +17,7 @@ function refreshFromSignal() {
     if (!state.organizationId) return;
     if (state.busy || polling) return refreshFromSignal();
     await pollWaitlist(true);
+    if (!state.busy && currentScreen() === "availability") await refreshAvailability();
     if (!state.busy && ["overview", "mine"].includes(currentScreen())) await loadWorkspace();
   }, 120);
 }

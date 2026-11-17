@@ -20,6 +20,7 @@ internal static class BookingEndpoints
         api.MapTeamEndpoints();
         api.MapGet("/resources", GetResources);
         api.MapGet("/calendar", GetCalendar);
+        api.MapGet("/availability", AvailabilitySearch.Find);
         api.MapGet("/notifications", GetNotifications);
         api.MapPost("/bookings", BookSlot)
             .Produces<CreatedBooking>(201)
@@ -67,7 +68,7 @@ internal static class BookingEndpoints
         Results.Ok(await scope.Resources(db).AsNoTracking()
             .Where(resource => !resource.IsArchived)
             .OrderBy(resource => resource.SortOrder).ThenBy(resource => resource.Name).ThenBy(resource => resource.Id)
-            .Select(resource => new { resource.Id, resource.Name, resource.Location })
+            .Select(resource => new { resource.Id, resource.Name, resource.Location, resource.Type, resource.Capacity, resource.Equipment })
             .ToListAsync(ct));
 
     private static async Task<IResult> GetNotifications(BookingDb db, OrganizationScope scope,

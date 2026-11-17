@@ -40,14 +40,31 @@ public sealed class BookingDb(DbContextOptions<BookingDb> options) : IdentityDbC
         var resources = modelBuilder.Entity<Resource>();
         resources.HasKey(resource => resource.Id);
         resources.Property(resource => resource.Id).HasMaxLength(32);
+        resources.Property(resource => resource.Type).HasMaxLength(16).HasDefaultValue(ResourceTypes.Other);
+        resources.Property(resource => resource.Equipment).HasDefaultValue(Array.Empty<string>());
         resources.HasOne<Organization>().WithMany().HasForeignKey(resource => resource.OrganizationId)
             .OnDelete(DeleteBehavior.Restrict);
         resources.HasData(
-            new Resource("microscope", "Оптический микроскоп", "Лаборатория А · кабинет 204", 1, Organization.University),
-            new Resource("electronics", "Паяльная станция", "Мастерская · кабинет 108", 2, Organization.University),
-            new Resource("studio", "Студия записи", "Медиалаб · кабинет 312", 3, Organization.University),
-            new Resource("meeting-room", "Переговорная", "Коворкинг · кабинет 403", 1, Organization.Coworking),
-            new Resource("podcast-room", "Подкаст-студия", "Коворкинг · кабинет 405", 2, Organization.Coworking));
+            new Resource("microscope", "Оптический микроскоп", "Лаборатория А · кабинет 204", 1, Organization.University)
+            {
+                Type = ResourceTypes.Equipment, Capacity = 2, Equipment = ["камера"]
+            },
+            new Resource("electronics", "Паяльная станция", "Мастерская · кабинет 108", 2, Organization.University)
+            {
+                Type = ResourceTypes.Equipment, Capacity = 1, Equipment = ["вытяжка", "термофен"]
+            },
+            new Resource("studio", "Студия записи", "Медиалаб · кабинет 312", 3, Organization.University)
+            {
+                Type = ResourceTypes.Studio, Capacity = 4, Equipment = ["аудиоинтерфейс", "микрофон"]
+            },
+            new Resource("meeting-room", "Переговорная", "Коворкинг · кабинет 403", 1, Organization.Coworking)
+            {
+                Type = ResourceTypes.Room, Capacity = 8, Equipment = ["видеосвязь", "доска", "экран"]
+            },
+            new Resource("podcast-room", "Подкаст-студия", "Коворкинг · кабинет 405", 2, Organization.Coworking)
+            {
+                Type = ResourceTypes.Studio, Capacity = 4, Equipment = ["аудиоинтерфейс", "микрофон"]
+            });
 
         var bookings = modelBuilder.Entity<Booking>();
         bookings.Property(booking => booking.MaintenanceReason).HasMaxLength(160);
@@ -106,7 +123,12 @@ public sealed record OrganizationMembership(Guid OwnerId, string OrganizationId,
 }
 
 public sealed record Resource(string Id, string Name, string Location, int SortOrder, string OrganizationId,
-    bool IsArchived = false);
+    bool IsArchived = false)
+{
+    public string Type { get; init; } = ResourceTypes.Other;
+    public int? Capacity { get; init; }
+    public string[] Equipment { get; init; } = [];
+}
 
 public sealed class WorkspaceActivity
 {

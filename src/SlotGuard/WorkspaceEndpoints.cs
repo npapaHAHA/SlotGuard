@@ -124,6 +124,8 @@ internal static class WorkspaceEndpoints
             return InvalidResource();
         var resource = new Resource(Guid.NewGuid().ToString("N"), input.Name!.Trim(), input.Location!.Trim(),
             100, scope.Current.Id);
+        if (input.Details is not null)
+            resource = input.Details.ApplyTo(resource);
         db.Resources.Add(resource);
         Audit.Add(db, resource, Actor(user), "resource.created", resource.Location, clock.GetUtcNow());
         await db.SaveChangesAsync(ct);
@@ -154,12 +156,17 @@ internal static class WorkspaceEndpoints
         {
             Name = input.Name!.Trim(), Location = input.Location!.Trim(), IsArchived = input.IsArchived
         };
+        if (input.Details is not null)
+            updated = input.Details.ApplyTo(updated);
         if (updated == resource)
             return Results.Ok(resource);
 
         await scope.Resources(db).Where(item => item.Id == id).ExecuteUpdateAsync(set => set
             .SetProperty(item => item.Name, updated.Name)
             .SetProperty(item => item.Location, updated.Location)
+            .SetProperty(item => item.Type, updated.Type)
+            .SetProperty(item => item.Capacity, updated.Capacity)
+            .SetProperty(item => item.Equipment, updated.Equipment)
             .SetProperty(item => item.IsArchived, updated.IsArchived), ct);
         var action = resource.IsArchived == updated.IsArchived ? "resource.updated"
             : updated.IsArchived ? "resource.archived" : "resource.restored";
@@ -178,14 +185,16 @@ internal static class WorkspaceEndpoints
             : Results.StatusCode(403);
 
     private static bool ValidResource(ResourceInput input) =>
-        input.Name?.Trim().Length is > 0 and <= 100 && input.Location?.Trim().Length is > 0 and <= 140;
+        input.Name?.Trim().Length is > 0 and <= 100 && input.Location?.Trim().Length is > 0 and <= 140
+        && (input.Details?.IsValid() ?? true);
 
     private static IResult InvalidResource() =>
-        Results.Problem(statusCode: 400, title: "Укажите название до 100 символов и расположение до 140 символов.");
+        Results.Problem(statusCode: 400,
+            title: "Проверьте название, расположение, тип, вместимость и список оснащения ресурса.");
 
     internal static string Actor(ClaimsPrincipal user) => user.FindFirstValue(ClaimTypes.GivenName)
         ?? user.Identity?.Name ?? "Администратор";
-    private sealed record ResourceInput(string? Name, string? Location, bool IsArchived = false);
+    private sealed record ResourceInput(string? Name, string? Location, bool IsArchived = false, ResourceDetails? Details = null);
     private sealed record Occupancy(string ResourceId, DateTimeOffset StartsAt, string Status);
     private sealed record Totals(int Free, int Booked, int Held, int Maintenance);
 }

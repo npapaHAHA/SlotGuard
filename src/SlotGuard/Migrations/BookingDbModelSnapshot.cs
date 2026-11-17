@@ -422,6 +422,15 @@ namespace SlotGuard.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<string[]>("Equipment")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValue(new string[0]);
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
@@ -440,6 +449,13 @@ namespace SlotGuard.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("other");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizationId");
@@ -450,47 +466,62 @@ namespace SlotGuard.Migrations
                         new
                         {
                             Id = "microscope",
+                            Capacity = 2,
+                            Equipment = new[] { "камера" },
                             IsArchived = false,
                             Location = "Лаборатория А · кабинет 204",
                             Name = "Оптический микроскоп",
                             OrganizationId = "university",
-                            SortOrder = 1
+                            SortOrder = 1,
+                            Type = "equipment"
                         },
                         new
                         {
                             Id = "electronics",
+                            Capacity = 1,
+                            Equipment = new[] { "вытяжка", "термофен" },
                             IsArchived = false,
                             Location = "Мастерская · кабинет 108",
                             Name = "Паяльная станция",
                             OrganizationId = "university",
-                            SortOrder = 2
+                            SortOrder = 2,
+                            Type = "equipment"
                         },
                         new
                         {
                             Id = "studio",
+                            Capacity = 4,
+                            Equipment = new[] { "аудиоинтерфейс", "микрофон" },
                             IsArchived = false,
                             Location = "Медиалаб · кабинет 312",
                             Name = "Студия записи",
                             OrganizationId = "university",
-                            SortOrder = 3
+                            SortOrder = 3,
+                            Type = "studio"
                         },
                         new
                         {
                             Id = "meeting-room",
+                            Capacity = 8,
+                            Equipment = new[] { "видеосвязь", "доска", "экран" },
                             IsArchived = false,
                             Location = "Коворкинг · кабинет 403",
                             Name = "Переговорная",
                             OrganizationId = "coworking",
-                            SortOrder = 1
+                            SortOrder = 1,
+                            Type = "room"
                         },
                         new
                         {
                             Id = "podcast-room",
+                            Capacity = 4,
+                            Equipment = new[] { "аудиоинтерфейс", "микрофон" },
                             IsArchived = false,
                             Location = "Коворкинг · кабинет 405",
                             Name = "Подкаст-студия",
                             OrganizationId = "coworking",
-                            SortOrder = 2
+                            SortOrder = 2,
+                            Type = "studio"
                         });
                 });
 

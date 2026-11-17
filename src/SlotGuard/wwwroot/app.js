@@ -69,6 +69,7 @@ async function api(url, options, organizationId) {
       429: "Слишком много запросов. Повторите через минуту."
     }[response.status] ?? "Сервер не смог выполнить запрос.";
     const error = new Error(problem.title || fallback);
+    error.status = response.status;
     error.conflicts = problem.conflicts;
     throw error;
   }
@@ -595,5 +596,6 @@ setInterval(() => { if (!liveReady) pollWaitlist(); }, 2000);
 setInterval(pollNotifications, 2000);
 setInterval(updateCountdown, 1000);
 bindWorkspace();
+bindAvailability();
 bindAccounts();
 start();
