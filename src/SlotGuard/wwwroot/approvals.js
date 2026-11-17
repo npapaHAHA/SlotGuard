@@ -1,4 +1,9 @@
 let approvalQueue = [];
+let selectedApproval = null;
+const approvalDrafts = new Map();
+const approvalDay = new Intl.DateTimeFormat("ru-RU", {
+  weekday: "short", day: "numeric", month: "long", timeZone: "Europe/Moscow"
+});
 
 function approvalMessage(message, error = false) {
   const node = section("approval-message");
@@ -9,86 +14,144 @@ function approvalMessage(message, error = false) {
 
 function resetApprovals() {
   approvalQueue = [];
+  selectedApproval = null;
+  approvalDrafts.clear();
   section("approval-list").replaceChildren();
-  section("approval-count").hidden = true;
+  section("approval-detail").replaceChildren();
+  section("approval-board").hidden = true;
+  section("approval-empty").hidden = true;
   approvalMessage("");
 }
 
 function renderApprovalControls() {
-  for (const control of section("approval-list").querySelectorAll("button, textarea"))
+  for (const control of section("approval-board").querySelectorAll("button, textarea"))
     control.disabled = state.busy;
 }
 
 function renderApprovals(requests) {
   const list = section("approval-list");
-  if (list.childElementCount && JSON.stringify(requests) === JSON.stringify(approvalQueue)) return;
+  const empty = section("approval-empty");
+  if ((!empty.hidden || list.childElementCount) && JSON.stringify(requests) === JSON.stringify(approvalQueue)) return;
 
-  const focused = document.activeElement;
-  const focusedId = focused?.closest("[data-approval-id]")?.dataset.approvalId;
-  const drafts = new Map([...list.querySelectorAll("[data-approval-id]")].map(card =>
-    [card.dataset.approvalId, card.querySelector("textarea").value]));
-  const cards = requests.map(request => approvalCard(request, drafts.get(request.id) ?? ""));
-  if (cards.length) list.replaceChildren(...cards);
-  else list.replaceChildren(element("p", "panel approval-empty", "Заявок на согласование пока нет."));
-
+  const focusedId = document.activeElement?.dataset.approvalId;
+  const focusInDetail = section("approval-detail").contains(document.activeElement);
+  const previousId = selectedApproval?.id;
+  const scroll = list.scrollTop;
   approvalQueue = requests;
-  const count = section("approval-count");
-  count.textContent = requests.length;
-  count.hidden = requests.length === 0;
-  renderApprovalControls();
-  if (focusedId) {
-    const target = cards.find(card => card.dataset.approvalId === focusedId);
-    const replacement = [...(target?.querySelectorAll("textarea, button") ?? [])]
-      .find(control => control.name === focused.name && control.value === focused.value);
-    replacement?.focus({ preventScroll: true });
+  const openIds = new Set(requests.map(request => request.id));
+  for (const id of approvalDrafts.keys()) {
+    if (!openIds.has(id)) approvalDrafts.delete(id);
   }
+  const next = requests.find(request => request.id === selectedApproval?.id) ?? requests[0];
+  section("approval-board").hidden = !next;
+  empty.hidden = Boolean(next);
+  section("approval-count").textContent = requests.length;
+
+  let group;
+  let previousDay;
+  const groups = [];
+  for (const request of requests) {
+    const date = new Date(request.startsAt);
+    const day = approvalDay.format(date);
+    if (day !== previousDay) {
+      group = element("div", "approval-day");
+      group.append(element("h3", "", day));
+      groups.push(group);
+      previousDay = day;
+    }
+    const row = button("approval-row", undefined, () => {
+      selectApproval(request);
+      section("approval-detail-title").focus();
+    });
+    row.dataset.approvalId = request.id;
+    row.setAttribute("aria-controls", "approval-detail");
+    const time = element("time", "", timeFormat.format(date));
+    time.dateTime = request.startsAt;
+    const text = element("span", "approval-row-text");
+    text.append(element("strong", "", request.resourceName), element("span", "", request.requester));
+    row.append(time, text);
+    group.append(row);
+  }
+  list.replaceChildren(...groups);
+  selectApproval(next);
+  list.scrollTop = scroll;
+  if (focusedId && !state.busy) queueButton(focusedId)?.focus({ preventScroll: true });
+  if (focusInDetail && next && next.id !== previousId) section("approval-detail-title").focus({ preventScroll: true });
 }
 
-function approvalCard(request, draft) {
-  const card = element("article", "panel approval-card");
-  card.dataset.approvalId = request.id;
-  const summary = element("div", "approval-summary");
-  const header = element("div", "available-heading");
-  const icon = symbol("event_available");
-  icon.classList.add("available-icon");
-  const identity = element("div", "available-copy");
-  identity.append(element("h3", "", request.resourceName), element("p", "", request.location));
-  header.append(icon, identity);
-  const date = element("time", "", appointmentTime(request.startsAt));
-  date.dateTime = request.startsAt;
-  summary.append(header, date, element("p", "", request.requester));
+function queueButton(id) {
+  return [...section("approval-list").querySelectorAll(".approval-row")].find(row => row.dataset.approvalId === id);
+}
 
+function selectApproval(request) {
+  for (const row of section("approval-list").querySelectorAll(".approval-row"))
+    row.setAttribute("aria-pressed", String(row.dataset.approvalId === request?.id));
+  if (JSON.stringify(selectedApproval) !== JSON.stringify(request)) {
+    selectedApproval = request;
+    section("approval-detail").replaceChildren(...(request ? [approvalSummary(request), approvalForm(request)] : []));
+  }
+  renderApprovalControls();
+}
+
+function approvalSummary(request) {
+  const date = new Date(request.startsAt);
+  const header = element("div", "approval-detail-header");
+  const appointment = element("div", "approval-appointment");
+  const time = element("time", "approval-start", timeFormat.format(date));
+  time.dateTime = request.startsAt;
+  appointment.append(time, element("span", "approval-date", approvalDay.format(date)));
+  const title = element("h2", "", request.resourceName);
+  title.id = "approval-detail-title";
+  title.tabIndex = -1;
+  const requester = element("p", "approval-requester", request.requester);
+  const returnToList = button("approval-back", "К очереди", () => queueButton(request.id)?.focus());
+  header.append(appointment, title, element("p", "approval-location", request.location), requester, returnToList);
+  return header;
+}
+
+function approvalForm(request) {
   const form = element("form", "workspace-form approval-form");
   const label = element("label", "", "Причина решения");
   const reason = element("textarea", "");
-  Object.assign(reason, { name: "reason", required: true, maxLength: 240, rows: 2, value: draft,
-    placeholder: "Участник увидит этот текст в «Моих записях»" });
+  Object.assign(reason, { name: "reason", required: true, maxLength: 240, rows: 3,
+    value: approvalDrafts.get(request.id) ?? "" });
+  reason.setAttribute("aria-describedby", "approval-reason-hint");
   label.append(reason);
+  const hint = element("div", "approval-form-hint");
+  const explanation = element("span", "", "Участник увидит причину в «Моих записях».");
+  explanation.id = "approval-reason-hint";
+  const counter = element("span", "approval-counter", `${reason.value.length} / ${reason.maxLength}`);
+  reason.addEventListener("input", () => {
+    approvalDrafts.set(request.id, reason.value);
+    counter.textContent = `${reason.value.length} / ${reason.maxLength}`;
+  });
+  hint.append(explanation, counter);
+
   const actions = element("div", "decision-actions");
   for (const [status, text, style] of [
-    ["approved", "Одобрить", "page-action"], ["rejected", "Отклонить", "outline-action"]
+    ["rejected", "Отклонить", "outline-action"], ["approved", "Одобрить", "page-action"]
   ]) {
     const control = element("button", style, text);
     Object.assign(control, { type: "submit", name: "decision", value: status });
     actions.append(control);
   }
-  form.append(label, actions);
+  form.append(label, hint, actions);
   form.addEventListener("submit", event => {
     event.preventDefault();
-    const status = event.submitter?.value;
-    if (!status) return;
+    if (!event.submitter) return;
+    const status = event.submitter.value;
     run(async () => {
       approvalMessage("");
       try {
         await api(`/api/approvals/${request.id}/decision`, jsonRequest("POST", { status, reason: reason.value.trim() }));
         approvalMessage(status === "approved" ? "Заявка одобрена." : "Заявка отклонена.");
         await loadWorkspace();
+        section("approval-message").focus();
       } catch (error) {
         approvalMessage(error.message, true);
         if (error.status === 409 || error.status === 404) await loadWorkspace();
       }
     });
   });
-  card.append(summary, form);
-  return card;
+  return form;
 }

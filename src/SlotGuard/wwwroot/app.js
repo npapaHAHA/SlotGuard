@@ -210,11 +210,13 @@ async function run(action, retry) {
   }
 }
 
-function changeCalendar(resourceId, week) {
-  return run(async () => {
+async function changeCalendar(resourceId, week) {
+  const previous = state.calendar;
+  await run(async () => {
     await loadCalendar(resourceId, week);
     scrollSelectionIntoView();
   }, () => changeCalendar(resourceId, week));
+  if (previous !== state.calendar) reveal(ui.week, 4);
 }
 
 function scrollSelectionIntoView() {
@@ -291,6 +293,7 @@ function renderResources() {
 
 function renderCalendar() {
   const calendar = state.calendar;
+  renderWeekScene();
   ui.prev.disabled = state.busy || !calendar || calendar.week === calendar.firstWeek;
   ui.today.disabled = ui.prev.disabled;
   ui.next.disabled = state.busy || !calendar || calendar.week === calendar.lastWeek;
@@ -351,12 +354,15 @@ function renderMobileDay(date) {
 }
 
 function selectSlot(slot, day) {
-  if (slot.startsAt !== state.selected) state.race = null;
+  const changed = slot.startsAt !== state.selected;
+  if (changed) state.race = null;
   state.selected = slot.startsAt;
   for (const item of ui.week.querySelectorAll(".slot"))
     item.setAttribute("aria-pressed", item.dataset.startsAt === state.selected);
   renderMobileDay(day ?? state.calendar.days.find(item => item.slots.includes(slot)).date);
+  updateSceneSelection();
   renderDetails();
+  if (changed) reveal(ui.details, 5);
 }
 
 function renderDetails() {
@@ -605,5 +611,6 @@ setInterval(pollNotifications, 2000);
 setInterval(updateCountdown, 1000);
 bindWorkspace();
 bindAvailability();
+bindWeekScene();
 bindAccounts();
 start();

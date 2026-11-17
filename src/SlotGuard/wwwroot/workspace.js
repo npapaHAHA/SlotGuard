@@ -35,7 +35,11 @@ function currentScreen() {
 
 function renderWorkspaceScreen() {
   const route = currentScreen();
-  for (const pane of document.querySelectorAll("[data-screen]")) pane.hidden = pane.dataset.screen !== route;
+  for (const pane of document.querySelectorAll("[data-screen]")) {
+    const entering = pane.hidden && pane.dataset.screen === route;
+    pane.hidden = pane.dataset.screen !== route;
+    if (entering) reveal(pane);
+  }
   for (const link of document.querySelectorAll("[data-nav]")) {
     link.hidden = route === "welcome" || (adminRoutes.has(link.dataset.nav) && !isAdmin())
       || (link.dataset.nav === "team" && !state.session?.isAccount);
@@ -298,7 +302,8 @@ function renderAgenda() {
       const pending = item.approvalStatus === "pending";
       const label = pending ? "На согласовании" : item.approvalStatus === "approved" ? "Одобрено"
         : item.holdExpiresAt ? `Резерв до ${timeFormat.format(new Date(item.holdExpiresAt))}` : "Подтверждено";
-      time.append(element("span", pending ? "pill pending" : "", label));
+      const style = pending ? "pill pending" : item.approvalStatus === "approved" ? "pill approved" : "";
+      time.append(element("span", style, label));
       if (item.holdExpiresAt) {
         actions.append(button("page-action small", item.requiresApproval ? "Отправить заявку" : "Подтвердить", () =>
           updateBooking(`/api/bookings/${item.id}/confirm`, { method: "POST" },
@@ -308,7 +313,13 @@ function renderAgenda() {
       actions.append(button("outline-action", action, () =>
         updateBooking(`/api/bookings/${item.id}`, { method: "DELETE" }, pending ? "Заявка отозвана." : "Запись отменена.")));
     }
-    if (item.approvalReason) time.append(element("span", "decision-note", item.approvalReason));
+    if (item.approvalReason) {
+      const note = element("div", "decision-note");
+      note.classList.toggle("decision-note-rejected", item.approvalStatus === "rejected");
+      note.append(element("strong", "", item.approvalStatus === "rejected" ? "Причина отказа" : "Причина одобрения"),
+        element("p", "", item.approvalReason));
+      time.append(note);
+    }
     row.append(description, time, actions);
     return row;
   }));

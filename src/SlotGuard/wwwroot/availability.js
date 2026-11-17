@@ -68,18 +68,21 @@ function renderAvailability(result) {
   const content = section("availability-results");
   const focused = document.activeElement?.dataset.availableKey;
   const groups = [];
-  const addGroup = (title, items) => {
+  const addGroup = (title, items, kind) => {
     if (items.length === 0) return;
     const group = element("section", "availability-group");
-    group.append(element("h2", "", title));
+    group.dataset.kind = kind;
+    const heading = element("div", "availability-group-heading");
+    heading.append(element("h2", "", title), element("span", "result-count", items.length));
+    group.append(heading);
     for (const slot of items) group.append(availabilityCard(slot));
     groups.push(group);
   };
   const requested = appointmentTime(result.requested);
   if (!result.exact.length && result.alternatives.length)
     groups.push(availabilityEmpty("На это время всё занято", requested));
-  addGroup(`Свободно · ${requested}`, result.exact);
-  addGroup("Ближайшие альтернативы", result.alternatives);
+  addGroup(`Свободно · ${requested}`, result.exact, "exact");
+  addGroup("Ближайшие альтернативы", result.alternatives, "alternative");
   if (!groups.length)
     groups.push(availabilityEmpty("Нет свободных вариантов", "Измените фильтры, дату или время."));
   content.replaceChildren(...groups);
@@ -108,8 +111,8 @@ function availabilityCard(slot) {
   const book = button("page-action", action, () => bookFromAvailability(slot));
   book.dataset.availableKey = `${resource.id}|${slot.startsAt}`;
   book.setAttribute("aria-label", `${action}: ${resource.name}, ${date.textContent}`);
-  schedule.append(date, book);
-  card.append(leading, tags, schedule);
+  schedule.append(book);
+  card.append(date, leading, tags, schedule);
   return card;
 }
 
@@ -130,6 +133,7 @@ async function fetchAvailability(criteria, withAlternatives = false, passive = f
   }
   availability.result = result;
   renderAvailability(result);
+  if (!passive) reveal(section("availability-results"), 6);
 }
 
 async function refreshAvailability() {
