@@ -1,23 +1,23 @@
 @font-face {
-  font-family: "Inter";
+  font-family: "Onest";
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/inter-cyrillic.woff2") format("woff2");
+  src: url("/fonts/onest-cyrillic.woff2") format("woff2");
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: "Onest";
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/inter-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD;
+  src: url("/fonts/onest-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: "Onest", "Segoe UI", system-ui, sans-serif;
   color: #1d2335;
   background: #f6f7fb;
   font-synthesis: none;
@@ -41,8 +41,9 @@ p, h1, h2, h3 { margin: 0; }
 .shell { max-width: 1440px; margin-inline: auto; padding-inline: clamp(18px, 4vw, 52px); }
 .topbar { background: #fff; border-bottom: 1px solid var(--border); }
 .topbar-inner { display: flex; justify-content: space-between; align-items: center; height: 66px; }
-.brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 750; letter-spacing: -.45px; }
-.brand-icon, .resource-icon {
+.brand { display: flex; align-items: center; gap: 10px; font-size: 23px; font-weight: 780; letter-spacing: -.045em; }
+.brand-icon { display: block; flex: none; }
+.resource-icon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -50,10 +51,6 @@ p, h1, h2, h3 { margin: 0; }
   height: 36px;
   border-radius: 11px;
 }
-.brand-icon { color: white; background: var(--accent); }
-.brand-icon > span { width: 17px; height: 16px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
-.brand-icon > span::before { content: ""; position: absolute; inset: 4px 0 auto; border-top: 1.5px solid currentColor; }
-.brand-icon > span::after { content: ""; position: absolute; width: 4px; height: 4px; border-radius: 1px; background: currentColor; top: 7px; left: 3px; }
 .guest {
   display: inline-flex;
   align-items: center;
@@ -67,7 +64,7 @@ p, h1, h2, h3 { margin: 0; }
 }
 .guest::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #6b53d1; }
 main.shell { padding-top: 34px; padding-bottom: 40px; }
-h1 { font-size: clamp(27px, 3.2vw, 38px); letter-spacing: -.04em; line-height: 1.17; }
+h1 { font-size: clamp(27px, 3.2vw, 38px); font-weight: 740; letter-spacing: -.04em; line-height: 1.17; }
 h2 { font-size: 17px; letter-spacing: -.018em; line-height: 1.3; }
 h3 { font-size: 14px; line-height: 1.4; }
 .intro, .week-label { color: var(--subtle); margin-top: 7px; }

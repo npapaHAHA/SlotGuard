@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#172720">
   <title>SlotGuard — рабочее пространство</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/design/slotguard-mark.svg">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/workspace.css">
   <link rel="stylesheet" href="/accounts.css">
@@ -25,7 +25,10 @@
   <a class="skip-link" href="#main-content">К содержимому</a>
   <div class="app-layout">
   <aside class="sidebar">
-    <a class="brand" href="#overview" aria-label="SlotGuard, обзор"><span class="brand-icon" aria-hidden="true"><span></span></span>SlotGuard</a>
+    <a class="brand" href="#overview" aria-label="SlotGuard, обзор">
+      <img class="brand-icon" src="/design/slotguard-mark.svg" width="36" height="36" alt="">
+      SlotGuard
+    </a>
     <nav aria-label="Разделы рабочего пространства">
       <a href="#overview" data-nav="overview" aria-current="page"><span class="symbol" aria-hidden="true">grid_view</span>Обзор</a>
       <a href="#calendar" data-nav="calendar"><span class="symbol" aria-hidden="true">calendar_month</span>Календарь</a>
@@ -63,7 +66,7 @@
     </div>
     <section data-screen="welcome" class="panel welcome" aria-labelledby="welcome-title" hidden>
       <div class="welcome-content">
-        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <img class="brand-icon" src="/design/slotguard-mark.svg" width="42" height="42" alt="">
         <h1 id="welcome-title">Создайте рабочее пространство</h1>
         <p>Добавьте переговорные или оборудование, настройте расписание и пригласите коллег.</p>
         <button type="button" id="welcome-create" class="page-action">Создать организацию</button>
@@ -299,7 +302,7 @@
   <dialog id="account-dialog" class="panel login-dialog account-dialog" aria-labelledby="account-title">
     <form class="workspace-form" id="account-form">
       <div class="account-dialog-title">
-        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <img class="brand-icon" src="/design/slotguard-mark.svg" width="42" height="42" alt="">
         <button type="button" class="icon-button today-button account-close" aria-label="Закрыть" data-close-dialog>×</button>
       </div>
       <h2 id="account-title"></h2>
@@ -313,7 +316,7 @@
   <dialog id="organization-dialog" class="panel login-dialog account-dialog" aria-labelledby="organization-title">
     <form class="workspace-form" id="organization-form">
       <div class="account-dialog-title">
-        <span class="brand-icon" aria-hidden="true"><span></span></span>
+        <img class="brand-icon" src="/design/slotguard-mark.svg" width="42" height="42" alt="">
         <button type="button" class="icon-button today-button account-close" aria-label="Закрыть" data-close-dialog>×</button>
       </div>
       <h2 id="organization-title">Новая организация</h2>

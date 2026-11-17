@@ -53,10 +53,7 @@ a { color: inherit; }
   margin: 0 9px 34px;
   text-decoration: none;
   color: #1d3125;
-  font-size: 23px;
-  letter-spacing: -.055em;
 }
-.sidebar .brand-icon { background: var(--lime); color: #223828; }
 .sidebar nav { display: grid; gap: 5px; }
 .sidebar nav a {
   display: flex;
@@ -90,7 +87,7 @@ main.shell { padding-top: 25px; padding-bottom: 52px; }
   gap: 15px;
   margin-bottom: 24px;
 }
-.page-heading h1 { font-size: clamp(29px, 3.6vw, 46px); letter-spacing: -.065em; }
+.page-heading h1 { font-size: clamp(29px, 3.6vw, 46px); }
 .page-heading .intro { margin-top: 6px; }
 .page-action, .outline-action, .text-link {
   display: inline-flex;
@@ -142,7 +139,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .hero-content { max-width: 610px; }
 .hero-period { display: flex; align-items: center; gap: 7px; color: #d9e9da; font-size: 12px; font-weight: 620; }
 .hero-period .symbol { color: var(--lime); font-size: 17px; }
-.hero-content h1 { font-size: clamp(33px, 4vw, 56px); letter-spacing: -.066em; margin-top: 8px; }
+.hero-content h1 { font-size: clamp(33px, 4vw, 56px); margin-top: 8px; }
 .hero-caption { font-size: 14px; color: #e1e9e1; margin-top: 7px; line-height: 1.5; max-width: 300px; }
 .hero-action { min-height: 42px; margin-top: 19px; border-color: var(--lime); background: var(--lime); color: #1f3627; }
 .hero-action:hover:not(:disabled) { background: #eafaac; border-color: #eafaac; }

@@ -10,12 +10,6 @@
 .welcome p { max-width: 390px; color: var(--subtle); line-height: 1.6; margin: 0 0 25px; }
 .account-dialog { width: min(440px, calc(100vw - 30px)); padding: clamp(20px, 5vw, 32px); }
 .account-dialog-title { display: flex; justify-content: space-between; align-items: center; }
-.account-dialog .brand-icon, .welcome .brand-icon {
-  width: 42px;
-  height: 42px;
-  background: var(--lime);
-  color: var(--accent-dark);
-}
 .account-dialog h2 { margin: 6px 0 0; font-size: 1.55rem; }
 .account-dialog p:not(.form-message), .invite-card > p { margin: 0; color: var(--subtle); line-height: 1.55; }
 .account-dialog button[type="submit"] { width: 100%; justify-content: center; min-height: 42px; }
