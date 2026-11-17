@@ -1,16 +1,23 @@
 const ui = Object.fromEntries([
   "guest", "notice", "resources", "week-label", "prev", "today", "next", "week",
-  "details", "race-panel", "race-button", "race-result", "status"
+  "details", "race-panel", "race-button", "race-result", "status", "organization-controls", "organization",
+  "organization-role", "session-button", "login-dialog", "login-form", "login-cancel", "login-error",
+  "notification-panel", "notifications"
 ].map(id => [id, document.getElementById(id)]));
 
 const labels = {
   available: "Свободно",
   booked: "Занято",
   mine: "Моя бронь",
+  held: "Ваш резерв",
+  maintenance: "Обслуживание",
   past: "Прошло"
 };
 const resourceIcons = { microscope: "◎", electronics: "ϟ", studio: "◉" };
-const state = { resources: [], resourceId: null, calendar: null, selected: null, race: null, busy: false };
+const state = {
+  session: null, organizations: [], organizationId: null,
+  resources: [], resourceId: null, calendar: null, selected: null, race: null, busy: false
+};
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   month: "long", day: "numeric", timeZone: "UTC"
 });
@@ -21,6 +28,9 @@ const timeFormat = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow"
 });
 const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+let polling = false;
+let pollingNotifications = false;
+let notificationSignature = "";
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -36,14 +46,24 @@ function button(className, text, onClick) {
   return node;
 }
 
-async function api(url, options) {
-  const response = await fetch(url, options);
+function request(url, options, organizationId = state.organizationId) {
+  const headers = new Headers(options?.headers);
+  if (organizationId) headers.set("X-SlotGuard-Organization", organizationId);
+  return fetch(url, { ...options, headers });
+}
+
+async function api(url, options, organizationId) {
+  const response = await request(url, options, organizationId);
   if (!response.ok) {
     const problem = await response.json().catch(() => ({}));
-    const fallback = response.status === 401
-      ? "Сеанс завершился. Обновите страницу."
-      : "Сервер не смог выполнить запрос.";
-    throw new Error(problem.title || fallback);
+    const fallback = {
+      401: "Сеанс завершился. Обновите страницу.",
+      403: "Для этого действия нужны права администратора.",
+      404: "Ресурс недоступен в этой организации."
+    }[response.status] ?? "Сервер не смог выполнить запрос.";
+    const error = new Error(problem.title || fallback);
+    error.conflicts = problem.conflicts;
+    throw error;
   }
   if (response.status !== 204) return response.json();
 }
@@ -69,10 +89,14 @@ function selectedSlot() {
   return allSlots().find(slot => slot.startsAt === state.selected);
 }
 
-async function loadCalendar(resourceId, week, retainSelection = false) {
+function fetchCalendar(resourceId, week, organizationId = state.organizationId) {
   const query = new URLSearchParams({ resourceId });
   if (week) query.set("week", week);
-  const calendar = await api(`/api/calendar?${query}`);
+  return api(`/api/calendar?${query}`, undefined, organizationId);
+}
+
+async function loadCalendar(resourceId, week, retainSelection = false, organizationId = state.organizationId) {
+  const calendar = await fetchCalendar(resourceId, week, organizationId);
   state.calendar = calendar;
   state.resourceId = resourceId;
   const slots = allSlots();
@@ -81,6 +105,72 @@ async function loadCalendar(resourceId, week, retainSelection = false) {
     || slots.find(slot => slot.status !== "past") || slots[0];
   state.selected = initial?.startsAt ?? null;
   if (!retainSelection) state.race = null;
+}
+
+async function pollWaitlist() {
+  const previous = state.calendar;
+  if (polling || state.busy || !allSlots().some(slot => slot.waitlistId || slot.status === "held")) return;
+
+  polling = true;
+  try {
+    const calendar = await fetchCalendar(state.resourceId, previous.week);
+    if (state.busy || state.calendar !== previous || JSON.stringify(calendar) === JSON.stringify(previous)) return;
+
+    const previousSlot = selectedSlot();
+    const focusedSlot = document.activeElement?.dataset.startsAt;
+    state.calendar = calendar;
+    renderCalendar();
+    if (focusedSlot) {
+      [...ui.week.querySelectorAll(".slot")].find(node => node.dataset.startsAt === focusedSlot)
+        ?.focus({ preventScroll: true });
+    }
+    const slot = selectedSlot();
+    if (JSON.stringify(slot) !== JSON.stringify(previousSlot)) {
+      renderDetails();
+      if (slot?.status === "held" && previousSlot?.status !== "held")
+        ui.status.textContent = "Слот зарезервирован для вас.";
+    }
+  } catch {
+    // Retry on the next poll. Explicit actions still surface API errors.
+  } finally {
+    polling = false;
+  }
+}
+
+function renderNotifications(items) {
+  const signature = JSON.stringify(items);
+  if (signature === notificationSignature) return;
+  notificationSignature = signature;
+  ui["notification-panel"].hidden = items.length === 0;
+  ui.notifications.replaceChildren(...items.map(item => {
+    const control = button("notification", undefined, () => openNotification(item));
+    const start = new Date(item.startsAt);
+    control.append(
+      element("strong", "", item.resourceName),
+      element("span", "", `${slotDateFormat.format(start)}, ${timeFormat.format(start)} · подтвердите до ${timeFormat.format(new Date(item.holdExpiresAt))}`)
+    );
+    return control;
+  }));
+}
+
+async function pollNotifications() {
+  const { session, organizationId } = state;
+  if (!session || !organizationId || state.busy || pollingNotifications) return;
+
+  pollingNotifications = true;
+  try {
+    const items = await api("/api/notifications", undefined, organizationId);
+    if (!state.busy && state.session === session && state.organizationId === organizationId)
+      renderNotifications(items);
+  } catch {
+    // Retry on the next refresh and keep the current calendar usable.
+  } finally {
+    pollingNotifications = false;
+  }
+}
+
+function openNotification(item) {
+  return goToCalendar(item);
 }
 
 async function run(action, retry) {
@@ -125,9 +215,38 @@ function scrollSelectionIntoView() {
 }
 
 function render() {
+  for (const control of ui.notifications.querySelectorAll("button"))
+    control.disabled = state.busy;
+  renderOrganization();
+  renderWorkspaceScreen();
   renderResources();
   renderCalendar();
   renderDetails();
+}
+
+function renderOrganization() {
+  const session = state.session;
+  const organization = state.organizations.find(item => item.id === state.organizationId);
+  ui["session-button"].hidden = !session?.demoEnabled;
+  ui["session-button"].textContent = session?.isDemo ? "Выйти" : "Демо-вход";
+  ui["session-button"].disabled = state.busy;
+  ui["organization-controls"].hidden = !organization;
+  if (!organization) return;
+
+  const select = ui.organization;
+  const options = state.organizations.map(item => {
+    const option = element("option", "", item.name);
+    option.value = item.id;
+    return option;
+  });
+  select.replaceChildren(...options);
+  select.value = organization.id;
+  select.disabled = state.busy || options.length < 2;
+  ui["organization-role"].textContent = organization.role === "admin" ? "Администратор" : "Участник";
+}
+
+function isAdmin() {
+  return state.organizations.some(item => item.id === state.organizationId && item.role === "admin");
 }
 
 function renderResources() {
@@ -146,7 +265,8 @@ function renderResources() {
     item.append(icon, description);
     return item;
   });
-  ui.resources.replaceChildren(...buttons);
+  ui.resources.replaceChildren(...(buttons.length ? buttons : (state.organizationId
+    ? [element("p", "list-empty", "Нет доступных ресурсов.")] : [])));
 }
 
 function renderCalendar() {
@@ -155,7 +275,8 @@ function renderCalendar() {
   ui.today.disabled = ui.prev.disabled;
   ui.next.disabled = state.busy || !calendar || calendar.week === calendar.lastWeek;
   if (!calendar) {
-    ui["week-label"].textContent = state.busy ? "Загрузка…" : "Календарь недоступен";
+    ui["week-label"].textContent = state.busy ? "Загрузка…" : "Выберите доступный ресурс";
+    ui.week.replaceChildren();
     return;
   }
 
@@ -175,8 +296,9 @@ function renderCalendar() {
       item.dataset.startsAt = slot.startsAt;
       item.disabled = state.busy;
       item.setAttribute("aria-pressed", slot.startsAt === state.selected);
-      item.setAttribute("aria-label", `${slotDateFormat.format(date)}, ${time}. ${labels[slot.status]}`);
-      item.append(element("span", "slot-time", time), element("span", "slot-state", labels[slot.status]));
+      const label = slot.waitlistId ? "В очереди" : labels[slot.status];
+      item.setAttribute("aria-label", `${slotDateFormat.format(date)}, ${time}. ${label}`);
+      item.append(element("span", "slot-time", time), element("span", "slot-state", label));
       slots.append(item);
     }
     column.append(heading, slots);
@@ -207,17 +329,9 @@ function renderDetails() {
     element("p", "details-date", slotDateFormat.format(start)),
     element("p", "details-time", `${timeFormat.format(start)}–${timeFormat.format(end)}`)
   );
-  if (slot.status === "available" || slot.status === "mine") {
-    const isMine = slot.status === "mine";
-    const action = button(
-      isMine ? "button secondary cancel" : "button primary",
-      isMine ? "Отменить бронь" : "Забронировать",
-      () => updateBooking(slot)
-    );
-    action.disabled = state.busy;
-    section.append(action);
-  }
+  renderSlotActions(section, slot);
   ui.details.append(section);
+  updateCountdown();
   ui["race-button"].hidden = slot.status !== "available";
   ui["race-button"].disabled = state.busy;
   ui["race-result"].replaceChildren();
@@ -233,28 +347,105 @@ function renderDetails() {
   }
 }
 
-function bookingPayload(slot) {
+function renderSlotActions(section, slot) {
+  function action(css, label, url, options, message) {
+    const control = button(css, label, () => updateBooking(url, options, message));
+    control.disabled = state.busy;
+    section.append(control);
+    return control;
+  }
+
+  const booking = `/api/bookings/${slot.bookingId}`;
+  const remove = { method: "DELETE" };
+
+  switch (slot.status) {
+    case "available":
+      action("button primary", "Забронировать", "/api/bookings", bookingPayload(slot), "Бронирование подтверждено.");
+      if (isAdmin()) section.append(maintenanceForm(slot));
+      break;
+    case "mine":
+      action("button secondary cancel", "Отменить бронь", booking, remove, "Бронь отменена.");
+      break;
+    case "booked":
+      if (slot.waitlistId) {
+        section.append(element("p", "details-date", `Место в очереди — ${slot.waitlistPosition}`));
+        action("button secondary cancel", "Выйти из очереди", `/api/waitlist/${slot.waitlistId}`, remove, "Вы вышли из очереди.");
+      } else {
+        action("button secondary cancel", "Встать в очередь", "/api/waitlist", bookingPayload(slot), "Вы в листе ожидания.");
+      }
+      break;
+    case "held": {
+      const countdown = element("p", "details-date hold-countdown");
+      countdown.dataset.expiresAt = slot.holdExpiresAt;
+      section.append(countdown);
+      const confirm = action("button primary", "Подтвердить бронь", `${booking}/confirm`,
+        { method: "POST" }, "Бронирование подтверждено.");
+      confirm.dataset.holdConfirm = "";
+      action("button secondary cancel", "Отказаться от резерва", booking, remove, "Резерв освобождён.");
+      break;
+    }
+    case "maintenance":
+      section.append(element("p", "details-date", slot.maintenanceReason));
+      if (isAdmin() && slot.maintenanceId) {
+        action("button secondary cancel", "Снять блокировку", `/api/maintenance/${slot.maintenanceId}`,
+          remove, "Слот снова доступен.");
+      }
+      break;
+  }
+}
+
+function maintenanceForm(slot) {
+  const form = element("form", "maintenance-form");
+  const label = element("label", "", "Причина обслуживания");
+  label.htmlFor = "maintenance-reason";
+  const input = element("input", "");
+  input.id = label.htmlFor;
+  input.required = true;
+  input.maxLength = 160;
+  input.disabled = state.busy;
+  const submit = element("button", "button secondary", "Закрыть на обслуживание");
+  submit.type = "submit";
+  submit.disabled = state.busy;
+  form.append(label, input, submit);
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    updateBooking("/api/maintenance", bookingPayload(slot, { reason: input.value.trim() }), "Слот закрыт на обслуживание.");
+  });
+  return form;
+}
+
+function updateCountdown() {
+  const label = ui.details.querySelector(".hold-countdown");
+  if (!label) return;
+  const seconds = Math.max(0, Math.ceil((Date.parse(label.dataset.expiresAt) - Date.now()) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  label.textContent = seconds > 0
+    ? `Подтвердите за ${minutes}:${String(seconds % 60).padStart(2, "0")}`
+    : "Время резерва истекло.";
+  ui.details.querySelector("[data-hold-confirm]").disabled = state.busy || seconds === 0;
+}
+
+function bookingPayload(slot, fields = {}) {
   return {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resourceId: state.resourceId, startsAt: slot.startsAt })
+    body: JSON.stringify({ resourceId: state.resourceId, startsAt: slot.startsAt, ...fields })
   };
 }
 
 function refreshCalendar() {
-  return loadCalendar(state.resourceId, state.calendar.week, true);
+  return state.calendar ? loadCalendar(state.resourceId, state.calendar.week, true) : Promise.resolve();
 }
 
-function updateBooking(slot) {
+function updateBooking(url, options, message) {
   return run(async () => {
     state.race = null;
-    const isCancel = slot.status === "mine";
     try {
-      if (isCancel) await api(`/api/bookings/${slot.bookingId}`, { method: "DELETE" });
-      else await api("/api/bookings", bookingPayload(slot));
-      ui.status.textContent = isCancel ? "Бронь отменена." : "Бронирование подтверждено.";
+      await api(url, options);
+      ui.status.textContent = message;
     } finally {
       await refreshCalendar();
+      await loadWorkspace();
     }
   }, () => run(refreshCalendar));
 }
@@ -264,7 +455,7 @@ function raceForSlot() {
   if (slot?.status !== "available") return;
   return run(async () => {
     const requests = Array.from({ length: 20 }, async () => {
-      const response = await fetch("/api/bookings", bookingPayload(slot));
+      const response = await request("/api/bookings", bookingPayload(slot));
       await response.arrayBuffer();
       return response.status;
     });
@@ -276,19 +467,76 @@ function raceForSlot() {
   }, () => run(refreshCalendar));
 }
 
-function start() {
-  return run(async () => {
-    const session = await api("/api/session", { method: "POST" });
-    ui.guest.textContent = session.label;
-    ui.guest.hidden = false;
-    state.resources = await api("/api/resources");
-    await loadCalendar(state.resources[0].id);
-    scrollSelectionIntoView();
-  }, start);
+async function enterOrganization(id) {
+  const resources = await api("/api/resources", undefined, id);
+  if (resources.length) await loadCalendar(resources[0].id, undefined, false, id);
+  else Object.assign(state, { resourceId: null, calendar: null, selected: null, race: null });
+  state.resources = resources;
+  state.organizationId = id;
+  renderNotifications([]);
+  resetWorkspace();
+  await loadWorkspace();
+  scrollSelectionIntoView();
 }
 
+async function enterSession(session) {
+  Object.assign(state, {
+    session, organizations: [], organizationId: null,
+    resources: [], resourceId: null, calendar: null, selected: null, race: null
+  });
+  ui.guest.textContent = session.label;
+  ui.guest.hidden = false;
+  renderNotifications([]);
+  resetWorkspace();
+  render();
+  state.organizations = await api("/api/organizations");
+  if (state.organizations.length === 0) throw new Error("Нет доступных организаций.");
+  await enterOrganization(state.organizations[0].id);
+}
+
+function start() {
+  return run(async () => enterSession(await api("/api/session", { method: "POST" })), start);
+}
+
+ui.organization.addEventListener("change", event => {
+  const id = event.currentTarget.value;
+  run(() => enterOrganization(id), () => run(() => enterOrganization(id)));
+});
+ui["session-button"].addEventListener("click", () => {
+  if (state.session?.isDemo) {
+    run(async () => enterSession(await api("/api/session/guest", { method: "POST" })), start);
+    return;
+  }
+  ui["login-error"].hidden = true;
+  ui["login-dialog"].showModal();
+});
+ui["login-cancel"].addEventListener("click", () => ui["login-dialog"].close());
+ui["login-form"].addEventListener("submit", event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const credentials = Object.fromEntries(new FormData(form));
+  run(async () => {
+    let session;
+    try {
+      session = await api("/api/session/demo", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(credentials)
+      });
+    } catch (error) {
+      ui["login-error"].textContent = error instanceof TypeError ? "Не удалось связаться с сервером." : error.message;
+      ui["login-error"].hidden = false;
+      return;
+    }
+    form.elements.password.value = "";
+    ui["login-dialog"].close();
+    await enterSession(session);
+  }, start);
+});
 ui.prev.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, -7)));
 ui.next.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, 7)));
 ui.today.addEventListener("click", () => changeCalendar(state.resourceId, state.calendar.firstWeek));
 ui["race-button"].addEventListener("click", raceForSlot);
+setInterval(pollWaitlist, 2000);
+setInterval(pollNotifications, 2000);
+setInterval(updateCountdown, 1000);
+bindWorkspace();
 start();

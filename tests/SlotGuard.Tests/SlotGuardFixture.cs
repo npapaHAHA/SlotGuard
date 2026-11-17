@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,17 +12,19 @@ using Xunit;
 
 namespace SlotGuard.Tests;
 
-public sealed class SlotGuardFixture : IAsyncLifetime
+public class SlotGuardFixture : IAsyncLifetime
 {
     private PostgreSqlContainer? _container;
     private string? _externalConnection;
     private string? _schema;
     private WebApplicationFactory<Program>? _host;
+    private readonly TestClock _clock = new();
 
     public static readonly DateTimeOffset Now = new(2026, 5, 11, 5, 30, 0, TimeSpan.Zero);
     public IServiceProvider Services => _host!.Services;
+    public void SetTime(DateTimeOffset time) => _clock.SetTime(time);
 
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
         string connectionString;
         _externalConnection = Environment.GetEnvironmentVariable("SLOTGUARD_TEST_POSTGRES");
@@ -42,18 +45,29 @@ public sealed class SlotGuardFixture : IAsyncLifetime
 
         _host = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:SlotGuard"] = connectionString }));
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                var settings = new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:SlotGuard"] = connectionString,
+                    ["Waitlist:HoldSeconds"] = "600",
+                    ["DemoAccounts:Password"] = "test-demo-key"
+                };
+                ConfigureSettings(settings);
+                config.AddInMemoryCollection(settings);
+            });
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedClock());
+                services.AddSingleton<TimeProvider>(_clock);
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
             });
         });
     }
 
-    public async Task DisposeAsync()
+    protected virtual void ConfigureSettings(Dictionary<string, string?> settings) { }
+
+    public virtual async Task DisposeAsync()
     {
         if (_host is not null)
             await _host.DisposeAsync();
@@ -76,6 +90,14 @@ public sealed class SlotGuardFixture : IAsyncLifetime
         return client;
     }
 
+    public async Task<HttpClient> CreateDemo(string login)
+    {
+        var client = CreateClient();
+        using var response = await client.PostAsJsonAsync("/api/session/demo", new { login, password = "test-demo-key" });
+        response.EnsureSuccessStatusCode();
+        return client;
+    }
+
     private async Task ExecuteInExternalDatabase(string sql)
     {
         await using var connection = new NpgsqlConnection(_externalConnection);
@@ -84,8 +106,11 @@ public sealed class SlotGuardFixture : IAsyncLifetime
         await command.ExecuteNonQueryAsync();
     }
 
-    private sealed class FixedClock : TimeProvider
+    private sealed class TestClock : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => Now;
+        private long _ticks = Now.UtcTicks;
+
+        public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref _ticks), TimeSpan.Zero);
+        public void SetTime(DateTimeOffset value) => Interlocked.Exchange(ref _ticks, value.UtcTicks);
     }
 }

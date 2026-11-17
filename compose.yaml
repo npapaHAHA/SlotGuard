@@ -7,6 +7,9 @@ services:
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__SlotGuard: "Host=db;Database=slotguard;Username=slotguard;Password=slotguard_dev"
       DataProtection__KeyDirectory: /keys
+      Waitlist__HoldSeconds: "${SLOTGUARD_HOLD_SECONDS:-600}"
+      DemoAccounts__Password: "${SLOTGUARD_DEMO_PASSWORD:-slotguard_demo}"
+      RabbitMq__Uri: "amqp://slotguard:slotguard_dev@rabbitmq:5672/%2F"
     depends_on:
       db:
         condition: service_healthy
@@ -27,6 +30,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:4.4-alpine
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: slotguard
+      RABBITMQ_DEFAULT_PASS: slotguard_dev
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
 volumes:
   app_keys:
   postgres_data:
+  rabbitmq_data:

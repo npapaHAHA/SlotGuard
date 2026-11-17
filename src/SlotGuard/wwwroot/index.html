@@ -3,24 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f7fb">
-  <title>SlotGuard — календарь бронирования</title>
+  <meta name="theme-color" content="#f3f6f8">
+  <title>SlotGuard — рабочее пространство</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <script src="/workspace.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">К содержимому</a>
+  <div class="app-layout">
+  <aside class="sidebar">
+    <a class="brand" href="#overview" aria-label="SlotGuard, обзор"><span class="brand-icon" aria-hidden="true"><span></span></span>SlotGuard</a>
+    <nav aria-label="Разделы рабочего пространства">
+      <a href="#overview" data-nav="overview" aria-current="page"><span aria-hidden="true">▥</span>Обзор</a>
+      <a href="#calendar" data-nav="calendar"><span aria-hidden="true">▦</span>Календарь</a>
+      <a href="#mine" data-nav="mine"><span aria-hidden="true">✓</span>Мои записи</a>
+      <a href="#manage" data-nav="manage" hidden><span aria-hidden="true">⚙</span>Управление</a>
+    </nav>
+  </aside>
+  <div class="app-main">
   <header class="topbar">
     <div class="shell topbar-inner">
-      <div class="brand"><span class="brand-icon" aria-hidden="true"><span></span></span>SlotGuard</div>
-      <span class="guest" id="guest" hidden></span>
+      <div id="organization-controls" class="organization-controls" hidden>
+        <label for="organization">Организация</label>
+        <select id="organization" aria-label="Организация"></select>
+        <span id="organization-role" class="guest"></span>
+      </div>
+      <div class="account-controls">
+        <span class="guest" id="guest" hidden></span>
+        <button type="button" id="session-button" class="icon-button today-button" hidden>Демо-вход</button>
+      </div>
     </div>
   </header>
-  <main class="shell">
-    <h1>Бронирование ресурсов</h1>
-    <p class="intro">Выберите оборудование или помещение и найдите свободное время.</p>
-
+  <main class="shell" id="main-content" tabindex="-1">
     <div id="notice" class="notice" role="alert" hidden></div>
+    <section id="notification-panel" class="panel notification-panel" aria-labelledby="notifications-title" hidden>
+      <h2 id="notifications-title">Уведомления о резерве</h2>
+      <div id="notifications" class="notification-list" aria-live="polite"></div>
+    </section>
+    <section data-screen="overview" aria-labelledby="overview-title">
+      <div class="page-heading">
+        <div>
+          <h1 id="overview-title">Обзор расписания</h1>
+          <p id="overview-period" class="intro">Загрузка расписания…</p>
+        </div>
+        <a href="#calendar" class="page-action">Открыть календарь <span aria-hidden="true">↗</span></a>
+      </div>
+      <div id="overview-content"></div>
+    </section>
+    <section data-screen="mine" aria-labelledby="mine-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="mine-title">Мои записи</h1><p class="intro">Брони, резервы и места в очереди.</p></div>
+        <a href="#calendar" class="page-action">Найти слот <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="segment" aria-label="Состояние записей">
+        <button type="button" data-agenda="upcoming" aria-pressed="true">Предстоящие</button>
+        <button type="button" data-agenda="waiting" aria-pressed="false">Лист ожидания</button>
+        <button type="button" data-agenda="history" aria-pressed="false">История</button>
+      </div>
+      <div id="agenda-content" class="panel listing"></div>
+    </section>
+    <section data-screen="manage" aria-labelledby="manage-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="manage-title">Управление</h1><p class="intro">Каталог, обслуживание и журнал изменений.</p></div>
+        <button id="add-resource" type="button" class="page-action">Добавить ресурс <span aria-hidden="true">+</span></button>
+      </div>
+      <div class="management-grid">
+        <section class="panel listing" aria-labelledby="catalog-title">
+          <div class="section-heading"><h2 id="catalog-title">Каталог ресурсов</h2>
+            <input id="resource-search" type="search" placeholder="Поиск" aria-label="Поиск ресурсов"></div>
+          <div id="catalog-content"></div>
+        </section>
+        <section class="panel listing" aria-labelledby="service-title">
+          <h2 id="service-title">Плановое обслуживание</h2>
+          <form id="service-form" class="workspace-form">
+            <label>Ресурс<select name="resourceId" required></select></label>
+            <label>Дата<input name="date" type="date" required></label>
+            <div class="form-pair">
+              <label>Первый слот<select name="fromHour" required></select></label>
+              <label>Последний слот<select name="throughHour" required></select></label>
+            </div>
+            <label>Причина<input name="reason" maxlength="160" required placeholder="Например, замена оптики"></label>
+            <button type="submit" class="page-action">Закрыть интервал</button>
+            <p class="form-message" id="service-message" role="status" hidden></p>
+          </form>
+        </section>
+      </div>
+      <section class="panel listing activity-panel" aria-labelledby="activity-title">
+        <div class="section-heading"><h2 id="activity-title">Журнал изменений</h2><span>Последние 50 действий</span></div>
+        <div id="activity-content"></div>
+      </section>
+    </section>
+    <section data-screen="calendar" aria-labelledby="booking-title" hidden>
+    <div class="page-heading">
+      <div><h1 id="booking-title">Календарь</h1><p class="intro">Выберите ресурс и время бронирования.</p></div>
+    </div>
     <section class="resources-section" aria-labelledby="resources-title">
       <h2 id="resources-title">Ресурсы</h2>
       <div id="resources" class="resources"></div>
@@ -30,7 +109,7 @@
       <section class="panel calendar" aria-labelledby="calendar-title">
         <div class="calendar-header">
           <div>
-            <h2 id="calendar-title">Календарь</h2>
+            <h2 id="calendar-title">Расписание</h2>
             <p id="week-label" class="week-label" aria-live="polite">Загрузка…</p>
           </div>
           <div class="week-controls" aria-label="Переключение недель">
@@ -47,6 +126,7 @@
             <li><span class="dot available"></span>Свободно</li>
             <li><span class="dot booked"></span>Занято</li>
             <li><span class="dot mine"></span>Моя бронь</li>
+            <li><span class="dot maintenance"></span>Обслуживание</li>
           </ul>
           <span class="timezone">МСК · UTC+3</span>
         </div>
@@ -63,7 +143,40 @@
         </section>
       </aside>
     </div>
+    </section>
     <div id="status" class="sr-only" role="status"></div>
   </main>
+  </div>
+  </div>
+  <dialog id="login-dialog" class="panel login-dialog" aria-labelledby="login-title">
+    <form id="login-form" class="login-form">
+      <h2 id="login-title">Демо-вход</h2>
+      <label for="login">Демо-аккаунт</label>
+      <select id="login" name="login">
+        <option value="university-admin">Администратор университета</option>
+        <option value="coworking-admin">Администратор коворкинга</option>
+      </select>
+      <label for="password">Пароль</label>
+      <input type="password" id="password" name="password" required maxlength="256" autocomplete="current-password">
+      <p id="login-error" class="login-error" role="alert" hidden></p>
+      <div class="login-actions">
+        <button type="submit" class="button primary">Войти</button>
+        <button type="button" id="login-cancel" class="button secondary">Отмена</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="resource-dialog" class="panel login-dialog" aria-labelledby="resource-dialog-title">
+    <form id="resource-form" class="workspace-form">
+      <h2 id="resource-dialog-title">Новый ресурс</h2>
+      <label>Название<input name="name" required maxlength="100" autocomplete="off"></label>
+      <label>Расположение<input name="location" required maxlength="140" autocomplete="off"></label>
+      <label class="checkbox-label" id="archive-field"><input name="isArchived" type="checkbox"> В архиве</label>
+      <p id="resource-error" class="form-message error" role="alert" hidden></p>
+      <div class="login-actions">
+        <button type="submit" class="button primary">Сохранить</button>
+        <button type="button" id="resource-cancel" class="button secondary">Отмена</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>
