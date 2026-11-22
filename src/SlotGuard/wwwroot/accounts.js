@@ -9,6 +9,7 @@ const accountModes = {
   reset: ["Новый пароль", "Задайте пароль для входа в SlotGuard.", "Сохранить пароль"]
 };
 const accountLink = new URLSearchParams(location.search);
+let workspaceEntry = accountLink.get("start");
 let inviteToken = sessionStorage.getItem("slotguard.invitation");
 if (accountLink.get("action") === "invite" && accountLink.get("token")?.length === 43) {
   inviteToken = accountLink.get("token");
@@ -17,6 +18,19 @@ if (accountLink.get("action") === "invite" && accountLink.get("token")?.length =
 if (accountLink.has("action")) history.replaceState(history.state, "", location.pathname + location.hash);
 let accountMode = "login";
 let inviteError = "";
+
+function openWorkspaceEntry() {
+  const entry = workspaceEntry;
+  workspaceEntry = null;
+  if (accountLink.has("action") || !["register", "admin-demo"].includes(entry)) return;
+  const url = new URL(location.href);
+  url.searchParams.delete("start");
+  history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+  if (entry === "register" && !state.session?.isAccount) showAccount("register");
+  if (entry !== "admin-demo" || isAdmin()) return;
+  if (state.session?.demoEnabled) showDemoLogin("university-admin");
+  else if (!state.session?.isAccount) showAccount("login");
+}
 
 function showAccount(mode) {
   accountMode = mode;
@@ -166,7 +180,7 @@ function bindAccounts() {
       try {
         const organization = await api("/api/account/organizations", jsonRequest("POST", data));
         section("organization-dialog").close();
-        location.hash = "manage";
+        location.hash = "overview";
         await enterSession(state.session, organization.id);
       } catch (error) {
         formProblem(section("organization-error"), error);

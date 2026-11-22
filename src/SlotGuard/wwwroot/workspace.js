@@ -91,6 +91,7 @@ function renderWorkspaceScreen() {
   const serviceUnavailable = state.busy || service.elements.resourceId.options.length === 0;
   for (const control of service.elements) control.disabled = serviceUnavailable;
   section("resource-form").querySelector('button[type="submit"]').disabled = state.busy;
+  section("setup-add-resource").disabled = state.busy || !isAdmin();
   section("public-link-form").querySelector('button[type="submit"]').disabled = state.busy;
   section("add-resource").disabled = state.busy;
   for (const control of section("catalog-content").querySelectorAll(".catalog-row button"))
@@ -113,6 +114,7 @@ function resetWorkspace() {
   workspace.catalog = [];
   workspace.templates = [];
   section("template-cards").replaceChildren();
+  section("workspace-setup").hidden = true;
   section("overview-content").replaceChildren();
   section("agenda-content").replaceChildren();
   section("catalog-content").replaceChildren();
@@ -221,7 +223,8 @@ function statsTile(label, value, className, iconName) {
 function renderOverview(data, agenda) {
   workspace.week = data.week;
   section("overview-period").textContent = weekFormat.formatRange(new Date(data.week), new Date(isoPlusDays(data.week, 6)))
-    + " · Москва";
+    + ` · ${timeZoneLabel(viewerZone)}`;
+  renderWorkspaceSetup(data.setup);
   const metrics = element("div", "stat-row");
   const bookings = statsTile("Подтверждённые брони", data.totals.booked, "stat-booked", "check_circle");
   if (data.totals.pending) bookings.append(element("span", "stat-label", `${data.totals.pending} на согласовании`));
@@ -234,6 +237,24 @@ function renderOverview(data, agenda) {
   const columns = element("div", "overview-grid");
   columns.append(weeklyChart(data), nextBookings(agenda));
   section("overview-content").replaceChildren(metrics, columns, resourceBreakdown(data.resources));
+}
+
+function renderWorkspaceSetup(setup) {
+  const panel = section("workspace-setup");
+  if (!setup) { panel.hidden = true; return; }
+  const steps = [...panel.querySelectorAll("[data-setup-step]")];
+  const completed = steps.filter(step => setup[step.dataset.setupStep]).length;
+  panel.hidden = completed === steps.length;
+  for (const step of steps) {
+    const done = setup[step.dataset.setupStep];
+    step.dataset.completed = String(done);
+    const marker = step.querySelector(".symbol");
+    marker.dataset.originalIcon ??= marker.textContent;
+    marker.textContent = done ? "check_circle" : marker.dataset.originalIcon;
+    const action = step.querySelector(".outline-action");
+    action.hidden = done || step.dataset.setupStep === "hasBooking" && !setup.hasResource;
+  }
+  section("workspace-setup-progress").textContent = `Готово ${completed} из ${steps.length}`;
 }
 
 function weeklyChart(data) {
@@ -707,6 +728,7 @@ function bindWorkspace() {
       || screen === "approvals" && approvalQueue.length) loadWorkspace();
   }, 4000);
   section("resource-search").addEventListener("input", renderCatalog);
+  section("setup-add-resource").addEventListener("click", () => editResource(null));
   section("add-resource").addEventListener("click", () => editResource(null));
   section("resource-cancel").addEventListener("click", () => section("resource-dialog").close());
   section("resource-form").addEventListener("submit", event => {

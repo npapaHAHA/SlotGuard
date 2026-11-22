@@ -26,7 +26,7 @@ internal static class WorkspaceEndpoints
     }
 
     private static async Task<IResult> Overview(DateOnly? week, string? timeZone, BookingDb db, OrganizationScope scope,
-        TimeProvider clock, CancellationToken ct)
+        ClaimsPrincipal user, TimeProvider clock, CancellationToken ct)
     {
         if (!Schedule.TryZone(timeZone, out var viewer))
             return BookingEndpoints.InvalidTimeZone();
@@ -60,6 +60,19 @@ internal static class WorkspaceEndpoints
             && item.StartUtc >= start && item.StartUtc < end && item.StartUtc > now && item.RemovedAt == null)
             .Select(item => item.StartUtc).ToListAsync(ct);
         var external = await ExternalAvailability.Read(db, ids, now, ct);
+        WorkspaceSetup? setup = null;
+        if (scope.IsAdmin && AccountSessions.IsAccount(user))
+        {
+            var owner = DemoAccounts.OwnerId(user);
+            var organization = scope.Current.Id;
+            var hasTeam = await db.Memberships.AnyAsync(item => item.OrganizationId == organization && item.OwnerId != owner, ct)
+                || await db.Invitations.AnyAsync(item => item.OrganizationId == organization && item.AcceptedAt == null
+                    && item.ExpiresAt > now, ct);
+            var hasBooking = ids.Length > 0 && await db.Bookings.AnyAsync(item => ids.Contains(item.ResourceId)
+                && item.CancelledAt == null && item.HoldExpiresAt == null && item.MaintenanceReason == null
+                && item.SeatCapacity == null && (item.ApprovalStatus == null || item.ApprovalStatus == BookingApproval.Approved), ct);
+            setup = new WorkspaceSetup(ids.Length > 0, hasTeam, hasBooking);
+        }
         await snapshot.CommitAsync(ct);
 
         var inWeek = rows.Where(item => item.StartsAt > now && InWeek(item.StartsAt)).ToArray();
@@ -86,7 +99,7 @@ internal static class WorkspaceEndpoints
         }).ToArray();
         return Results.Ok(new
         {
-            Week = monday, FirstWeek = firstWeek, LastWeek = lastWeek, Days = days,
+            Week = monday, FirstWeek = firstWeek, LastWeek = lastWeek, Days = days, Setup = setup,
             Totals = Count(inWeek, days.Sum(day => day.Counts.Free)), Waiting = waiting.Count(InWeek),
             Resources = resources.Select(resource => new
             {
@@ -95,6 +108,8 @@ internal static class WorkspaceEndpoints
             })
         });
     }
+
+    private sealed record WorkspaceSetup(bool HasResource, bool HasTeam, bool HasBooking);
 
     private static Totals Count(IEnumerable<Occupancy> items, int free)
     {

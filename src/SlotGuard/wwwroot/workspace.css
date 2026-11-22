@@ -141,6 +141,23 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .overview-hero-actions > a:focus-visible { outline-color: #fff; }
 .hero-action .symbol { font-size: 16px; }
 
+.workspace-setup { margin-bottom: 17px; padding: clamp(15px, 2.3vw, 23px); }
+.workspace-setup-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.workspace-setup-heading p, .workspace-setup-steps p { color: var(--subtle); font-size: 12px; line-height: 1.5; }
+.workspace-setup-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 14px 0 0; padding: 0; list-style: none; }
+.workspace-setup-steps li {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); align-content: start; gap: 8px 10px;
+  padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-tint);
+}
+.workspace-setup-steps li > .symbol {
+  display: grid; place-items: center; width: 34px; height: 34px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+}
+.workspace-setup-steps p { margin-top: 3px; }
+.workspace-setup-steps .outline-action { grid-column: 2; justify-self: start; }
+.workspace-setup-steps li[data-completed="true"] > .symbol { color: var(--green-text); background: var(--green-bg); }
+@media (max-width: 700px) { .workspace-setup-steps { grid-template-columns: minmax(0, 1fr); } }
+
 .stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
 .stat-tile {
   display: grid;

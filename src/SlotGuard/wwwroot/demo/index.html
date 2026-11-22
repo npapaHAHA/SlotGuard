@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fafafb">
-  <meta name="description" content="Интерактивная демонстрация SlotGuard. Выберите время на 3D-карте недели и проверьте, как решается конфликт бронирования.">
-  <title>SlotGuard — интерактивное демо</title>
+  <meta name="description" content="SlotGuard — календарь для бронирования общих ресурсов. Ищите свободное время, управляйте расписанием команды и бронируйте переговорные и оборудование.">
+  <title>SlotGuard — бронирование ресурсов</title>
   <link rel="icon" href="/design/slotguard-mark.svg" type="image/svg+xml">
   <script src="/theme.js"></script>
   <link rel="stylesheet" href="/styles.css">
@@ -18,12 +18,13 @@
   <script src="/demo/landing.js" defer></script>
 </head>
 <body class="landing">
-  <a class="skip-link" href="#interview-demo">К демонстрации</a>
+  <a class="skip-link" href="#product">К возможностям</a>
   <header class="landing-header">
     <div class="landing-width landing-header-inner">
       <a class="landing-brand" href="/demo/"><img src="/design/slotguard-mark.svg" width="35" height="35" alt="">SlotGuard</a>
-      <nav class="landing-nav" aria-label="Демонстрация">
-        <a href="#interview-demo">Сценарий</a>
+      <nav class="landing-nav" aria-label="О продукте">
+        <a href="#product">Возможности</a>
+        <a href="#interview-demo">3D-демо</a>
         <a href="#architecture">Архитектура</a>
       </nav>
       <div class="landing-header-actions">
@@ -36,11 +37,31 @@
   <main class="landing-width">
     <section class="landing-hero" aria-labelledby="landing-title">
       <h1 id="landing-title">У каждого ресурса<br>своё время</h1>
-      <p>Бронируйте переговорные, студии и оборудование. В демо два участника попробуют занять один слот.</p>
+      <p>Общий календарь для переговорных, студий и оборудования. Найдите свободное время или настройте расписание для своей команды.</p>
       <div class="landing-hero-actions">
-        <a href="#interview-demo" class="page-action">Попробовать демо <span aria-hidden="true">↓</span></a>
-        <a href="/#calendar" class="outline-action">Открыть календарь <span aria-hidden="true">↗</span></a>
+        <a href="/#availability" class="page-action">Найти время <span aria-hidden="true">↗</span></a>
+        <a href="/?start=register#overview" class="outline-action">Создать организацию <span aria-hidden="true">↗</span></a>
       </div>
+    </section>
+
+    <section id="product" class="landing-product" aria-labelledby="product-title">
+      <h2 id="product-title" class="sr-only">Возможности SlotGuard</h2>
+      <article class="landing-product-card">
+        <span class="symbol" aria-hidden="true">event_available</span>
+        <div><h3>Найти и забронировать</h3><p>Поиск по оснащению, лист ожидания, перенос и отмена в одном месте.</p></div>
+        <a href="/#calendar" class="outline-action">Календарь <span aria-hidden="true">↗</span></a>
+        <a href="/#mine" class="outline-action">Мои записи <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="landing-product-card">
+        <span class="symbol" aria-hidden="true">settings</span>
+        <div><h3>Управлять ресурсами</h3><p>Графики и обслуживание, согласование заявок и отчёты о загрузке.</p></div>
+        <a href="/?start=admin-demo#manage" class="outline-action">Открыть управление <span aria-hidden="true">↗</span></a>
+      </article>
+      <article class="landing-product-card">
+        <span class="symbol" aria-hidden="true">group</span>
+        <div><h3>Проводить мероприятия</h3><p>Публичная регистрация, места для участников и отметки посещаемости.</p></div>
+        <a href="/discover" class="outline-action">Площадки и события <span aria-hidden="true">↗</span></a>
+      </article>
     </section>
 
     <section id="interview-demo" class="landing-frame" aria-labelledby="interview-demo-title">

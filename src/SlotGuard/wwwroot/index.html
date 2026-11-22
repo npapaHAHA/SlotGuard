@@ -150,11 +150,35 @@
           </div>
         </div>
       </div>
+      <section class="panel workspace-setup" id="workspace-setup" aria-labelledby="workspace-setup-title" hidden>
+        <div class="workspace-setup-heading">
+          <h2 id="workspace-setup-title">Запуск рабочего пространства</h2>
+          <p id="workspace-setup-progress" role="status"></p>
+        </div>
+        <ol class="workspace-setup-steps">
+          <li data-setup-step="hasResource">
+            <span class="symbol" aria-hidden="true">meeting_room</span>
+            <div><h3>Добавьте ресурс</h3><p>Укажите помещение или оборудование, которое команда сможет бронировать.</p></div>
+            <button id="setup-add-resource" class="outline-action" type="button">Добавить ресурс</button>
+          </li>
+          <li data-setup-step="hasBooking">
+            <span class="symbol" aria-hidden="true">calendar_month</span>
+            <div><h3>Сделайте первую бронь</h3><p>Проверьте доступность и выберите свободное время в календаре.</p></div>
+            <a href="#calendar" class="outline-action">Выбрать время</a>
+          </li>
+          <li data-setup-step="hasTeam">
+            <span class="symbol" aria-hidden="true">group</span>
+            <div><h3>Пригласите коллег</h3><p>Отправьте приглашения по email, чтобы открыть команде доступ к расписанию.</p></div>
+            <a href="#team" class="outline-action">Пригласить коллег</a>
+          </li>
+        </ol>
+      </section>
       <div id="overview-content"></div>
     </section>
     <section data-screen="analytics" aria-labelledby="analytics-title" hidden>
       <div class="page-heading">
         <div><h1 id="analytics-title">Аналитика</h1><p id="analytics-zone" class="intro"></p></div>
+        <button type="button" id="analytics-export" class="outline-action" disabled>Скачать CSV</button>
       </div>
       <section class="panel analytics-filter" aria-label="Параметры отчёта">
         <form id="analytics-form" class="workspace-form">

@@ -36,6 +36,7 @@ function renderAnalyticsControls() {
   const form = section("analytics-form");
   for (const control of form.elements)
     control.disabled = state.busy || analytics.loading || Boolean(control.dataset.reportPeriod && !analytics.data);
+  section("analytics-export").disabled = !isAdmin() || state.busy || analytics.loading || !analytics.data;
 }
 
 function analyticsFormParams() {
@@ -49,6 +50,7 @@ function bindAnalytics() {
     event.preventDefault();
     loadAnalytics(analyticsFormParams());
   });
+  section("analytics-export").addEventListener("click", exportAnalytics);
   for (const control of form.querySelectorAll("[data-report-period]")) control.addEventListener("click", () => {
     const today = analytics.data.today;
     const value = control.dataset.reportPeriod;
@@ -60,6 +62,36 @@ function bindAnalytics() {
     form.elements.through.value = through;
     loadAnalytics({ from, through, resourceId });
   });
+}
+
+function exportAnalytics() {
+  const data = analytics.data;
+  if (!data || !isAdmin() || analytics.loading) return;
+  const header = ["Ресурс", "Статус", "Начало периода", "Конец периода", "Часовой пояс",
+    "Доступно, мин", "Забронировано, мин", "Обслуживание, мин", "Подтверждено", "Одобрено", "Отказано",
+    "Отменено", "Пришли", "Неявки", "Посещаемость не отмечена", "В очереди", "Предложен резерв", "Резерв подтверждён"];
+  const formatMinutes = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2, useGrouping: false });
+  const row = (name, status, metrics) => [name, status, data.from, data.through, data.timeZone,
+    ...[metrics.usage.availableMinutes, metrics.usage.bookedMinutes, metrics.usage.maintenanceMinutes]
+      .map(value => formatMinutes.format(value)),
+    metrics.confirmed, metrics.approved, metrics.rejected, metrics.cancelled, metrics.present, metrics.noShow,
+    metrics.unmarked, metrics.waitlisted, metrics.offered, metrics.converted];
+  const rows = [header, row("Итого", "", data.totals), ...data.resources.map(item =>
+    row(item.name, item.isArchived ? "Архив" : "Активен", item.metrics))];
+  const content = rows.map(fields => fields.map(value => {
+    const text = String(value);
+    // Treat resource names as text even if a spreadsheet would evaluate them as a formula.
+    const safe = /^[\s\p{Cc}]*[=+@\-＝＋＠－]/u.test(text) ? "'" + text : text;
+    return `"${safe.replaceAll('"', '""')}"`;
+  }).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF", content, "\r\n"], { type: "text/csv;charset=utf-8" }));
+  const download = element("a", "");
+  download.href = url;
+  download.download = `slotguard-${data.from}_${data.through}.csv`;
+  document.body.append(download);
+  download.click();
+  download.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function loadAnalytics(params = analytics.params) {

@@ -36,7 +36,7 @@
 .landing-workspace span { margin-inline-start: 3px; }
 .landing-hero {
   display: grid; justify-items: center; gap: 19px; text-align: center;
-  padding-block: clamp(64px, 7.7vw, 122px) clamp(48px, 5vw, 78px);
+  padding-block: clamp(64px, 6.2vw, 102px) clamp(39px, 4vw, 64px);
 }
 .landing-hero h1 { font-size: clamp(46px, 6.2vw, 88px); font-weight: 740; line-height: .99; letter-spacing: -.066em; text-wrap: balance; }
 .landing-hero > p { max-width: 48ch; color: var(--subtle); font-size: clamp(15px, 1.6vw, 19px); line-height: 1.52; text-wrap: pretty; }
@@ -49,6 +49,20 @@
     color 190ms var(--action-ease), box-shadow 190ms var(--action-ease), transform 190ms var(--action-ease);
 }
 .landing :is(.page-action, .outline-action):active:not(:disabled) { transform: translateY(1px); }
+
+.landing-product { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.landing-product-card {
+  display: flex; flex-wrap: wrap; align-content: start; align-items: center; gap: 8px;
+  min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px;
+  background: var(--panel-tint);
+}
+.landing-product-card > .symbol {
+  display: grid; place-items: center; width: 34px; height: 34px; align-self: start;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--ink);
+}
+.landing-product-card > div { flex: 1 0 calc(100% - 48px); min-width: 0; margin-bottom: 3px; }
+.landing-product-card h3 { font-size: 15px; }
+.landing-product-card p { margin-top: 3px; color: var(--subtle); font-size: 12px; line-height: 1.5; }
 
 .landing-frame {
   position: relative; isolation: isolate; overflow: hidden;
@@ -208,6 +222,8 @@
   .landing-hero { padding-block: 53px 41px; }
   .landing-hero h1 { font-size: clamp(39px, 9.2vw, 63px); }
   .landing-hero-actions a { min-height: 44px; padding-inline: 11px; font-size: 13px; }
+  .landing-product { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .landing-product-card { padding: 12px; }
   .landing-playground { grid-template-columns: minmax(0, 1fr); }
   .landing-frame { padding: 8px; border-radius: 19px; }
   .landing-map { min-height: 0; padding: 12px; border-inline-end: 0; border-bottom: 1px solid var(--border); }

@@ -861,7 +861,10 @@ async function enterSession(session, preferredOrganization = sessionStorage.getI
 }
 
 function start() {
-  return run(async () => enterSession(await api("/api/session", { method: "POST" })), start);
+  return run(async () => {
+    await enterSession(await api("/api/session", { method: "POST" }));
+    openWorkspaceEntry();
+  }, start);
 }
 
 async function changeViewerZone(preference) {
@@ -906,13 +909,20 @@ ui.organization.addEventListener("change", event => {
   const id = event.currentTarget.value;
   run(() => enterOrganization(id), () => run(() => enterOrganization(id)));
 });
+function showDemoLogin(login) {
+  const form = ui["login-form"];
+  if (login) form.elements.login.value = login;
+  ui["login-error"].hidden = true;
+  ui["login-dialog"].showModal();
+  if (login) form.elements.password.focus();
+}
+
 ui["session-button"].addEventListener("click", () => {
   if (state.session?.isDemo) {
     run(async () => enterSession(await api("/api/session/guest", { method: "POST" })), start);
     return;
   }
-  ui["login-error"].hidden = true;
-  ui["login-dialog"].showModal();
+  showDemoLogin();
 });
 ui["login-cancel"].addEventListener("click", () => ui["login-dialog"].close());
 ui["login-form"].addEventListener("submit", event => {
