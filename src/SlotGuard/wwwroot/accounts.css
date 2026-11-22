@@ -48,3 +48,7 @@
   .account-controls { flex-wrap: wrap; justify-content: flex-end; }
   .welcome { min-height: 340px; }
 }
+.team-invite-results { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.team-invite-results li { display: grid; gap: 3px; font-size: 12px; overflow-wrap: anywhere; }
+.team-invite-results span { color: var(--subtle); }
+.team-invite-results .error { color: #963c25; }

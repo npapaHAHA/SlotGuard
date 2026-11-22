@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#edf2e9">
+  <title>Управление бронью · SlotGuard</title>
+  <script src="/theme.js"></script>
+  <link rel="icon" href="/design/slotguard-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/public-booking.css">
+  <link rel="stylesheet" href="/reschedule.css">
+  <link rel="stylesheet" href="/manage-booking.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/time-zones.js" defer></script>
+  <script src="/booking-policy.js" defer></script>
+  <script src="/reschedule.js" defer></script>
+  <script src="/booking-payments.js" defer></script>
+  <script src="/manage-booking.js" defer></script>
+</head>
+<body class="public-body">
+  <header class="public-header">
+    <div class="public-width theme-header">
+      <div class="brand">
+        <img class="brand-icon" src="/design/slotguard-mark.svg" width="36" height="36" alt="">
+        SlotGuard
+      </div>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </header>
+  <main class="public-width public-main manage-main">
+    <section id="manage-loading" class="public-state" aria-live="polite">
+      <h1 id="manage-loading-title">Открываем бронь…</h1>
+      <p id="manage-loading-message" hidden></p>
+      <button id="manage-retry" class="page-action" type="button" hidden>Повторить</button>
+    </section>
+    <section id="manage-card" class="manage-card" aria-labelledby="manage-name" hidden>
+      <div class="manage-header">
+        <span class="manage-status" id="manage-status" aria-live="polite"></span>
+        <h1 id="manage-name"></h1>
+        <p id="manage-location"></p>
+      </div>
+      <div class="manage-details">
+        <div class="manage-time">
+          <span class="symbol" aria-hidden="true">event_available</span>
+          <div>
+            <strong id="manage-date"></strong>
+            <p id="manage-time"></p>
+            <p id="manage-payment" hidden></p>
+          </div>
+        </div>
+        <p id="manage-reason" hidden></p>
+        <p id="manage-deadlines" hidden></p>
+        <p id="manage-message" role="status" hidden></p>
+        <div class="manage-actions">
+          <button id="manage-move" class="page-action" type="button" hidden>Перенести бронь</button>
+          <button id="manage-download" class="outline-action" type="button" hidden>Скачать .ics</button>
+          <button id="manage-cancel" class="outline-action manage-cancel" type="button" hidden>Отменить бронь</button>
+          <button id="manage-refresh" class="outline-action" type="button" hidden>Обновить статус</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

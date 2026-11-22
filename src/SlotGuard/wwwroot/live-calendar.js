@@ -2,6 +2,7 @@ let calendarConnection = null;
 let liveOrganization = null;
 let liveReady = false;
 let liveRefresh = 0;
+let structureRefresh = 0;
 
 function renderLiveStatus() {
   const badge = section("live-status");
@@ -17,8 +18,41 @@ function refreshFromSignal() {
     if (!state.organizationId) return;
     if (state.busy || polling) return refreshFromSignal();
     await pollWaitlist(true);
+    if (!state.busy) refreshCalendarMonth();
     if (!state.busy && currentScreen() === "availability") await refreshAvailability();
-    if (!state.busy && ["overview", "mine", "approvals"].includes(currentScreen())) await loadWorkspace();
+    if (!state.busy && currentScreen() === "wizard") await refreshWizard();
+    if (!state.busy && ["overview", "mine", "approvals", "sessions", "integrations"].includes(currentScreen())) await loadWorkspace();
+  }, 120);
+}
+
+async function refreshStructureAccess() {
+  if (structureRefresh) return;
+  structureRefresh = setTimeout(async () => {
+    structureRefresh = 0;
+    if (!state.organizationId) return;
+    if (state.busy || polling) return refreshStructureAccess();
+    const organization = state.organizationId;
+    const session = state.session;
+    try {
+      await refreshReviewerAccess();
+      const resources = await api("/api/resources", { cache: "no-store" }, organization);
+      if (organization !== state.organizationId || session !== state.session) return;
+      if (state.busy) return refreshStructureAccess();
+      if (!resources.some(resource => resource.id === state.resourceId)) {
+        const resource = resources[0];
+        const calendar = resource ? await fetchCalendar(resource.id, undefined, organization, viewerZone, 60) : null;
+        if (organization !== state.organizationId || session !== state.session) return;
+        if (state.busy) return refreshStructureAccess();
+        Object.assign(state, { calendar, resourceId: resource?.id ?? null, selected: null, selectedDay: null, race: null });
+        if (calendar) reconcileCalendarSelection(false);
+      }
+      state.resources = resources;
+      render();
+      if (currentScreen() === "structure") await loadWorkspace();
+      refreshFromSignal();
+    } catch {
+      refreshFromSignal();
+    }
   }, 120);
 }
 
@@ -47,10 +81,19 @@ function connectCalendar(organization) {
     if (calendarConnection !== connection) return;
     liveReady = true;
     renderLiveStatus();
-    refreshFromSignal();
+    if (isAdmin()) refreshFromSignal();
+    else refreshStructureAccess();
   });
   connection.on("CalendarChanged", () => {
     if (calendarConnection === connection) refreshFromSignal();
+  });
+  connection.on("RoutingChanged", async () => {
+    if (calendarConnection !== connection) return;
+    await refreshReviewerAccess();
+    refreshFromSignal();
+  });
+  connection.on("StructureChanged", () => {
+    if (calendarConnection === connection) refreshStructureAccess();
   });
   connection.onreconnecting(() => {
     if (calendarConnection !== connection) return;
@@ -68,5 +111,6 @@ function connectCalendar(organization) {
 setInterval(() => {
   if (!state.organizationId || state.busy || liveReady) return;
   connectCalendar(state.organizationId);
-  refreshFromSignal();
+  if (isAdmin()) refreshFromSignal();
+  else refreshStructureAccess();
 }, 5000);

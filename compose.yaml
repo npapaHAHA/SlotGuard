@@ -17,6 +17,9 @@ services:
       Mail__User: "${SLOTGUARD_MAIL_USER:-}"
       Mail__Password: "${SLOTGUARD_MAIL_PASSWORD:-}"
       Mail__PublicUrl: "${SLOTGUARD_PUBLIC_URL:-http://127.0.0.1:8080/}"
+      GoogleCalendar__ClientId: "${SLOTGUARD_GOOGLE_CLIENT_ID:-}"
+      GoogleCalendar__ClientSecret: "${SLOTGUARD_GOOGLE_CLIENT_SECRET:-}"
+      GoogleCalendar__RedirectUri: "${SLOTGUARD_GOOGLE_REDIRECT_URI:-http://127.0.0.1:8080/google-calendar/callback}"
     depends_on:
       db:
         condition: service_healthy

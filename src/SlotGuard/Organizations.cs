@@ -7,16 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SlotGuard;
 
-internal sealed record OrganizationAccess(string Id, string Name, string Role);
+internal sealed record OrganizationAccess(string Id, string Name, string Role, bool CanReviewAssigned = false);
 
 internal sealed class OrganizationScope
 {
     public const string HeaderName = "X-SlotGuard-Organization";
     public OrganizationAccess Current { get; set; } = null!;
+    public Guid OwnerId { get; set; }
 
     public bool IsAdmin => Current.Role == OrganizationMembership.Admin;
-    public IQueryable<Resource> Resources(BookingDb db) =>
-        db.Resources.Where(resource => resource.OrganizationId == Current.Id);
+    public IQueryable<Resource> Resources(BookingDb db)
+    {
+        var catalog = db.Resources.Where(resource => resource.OrganizationId == Current.Id);
+        return IsAdmin ? catalog : OrganizationStructure.Visible(db, catalog, OwnerId);
+    }
 
     public static async Task<List<OrganizationAccess>> ForUser(BookingDb db, ClaimsPrincipal user, CancellationToken ct)
     {
@@ -50,6 +54,7 @@ internal sealed class OrganizationFilter(BookingDb db, OrganizationScope scope) 
         if (current is null)
             return Results.NotFound();
         scope.Current = current;
+        scope.OwnerId = DemoAccounts.OwnerId(http.User);
         return await next(context);
     }
 }
@@ -79,6 +84,7 @@ internal static class DemoAccounts
 
     public static async Task<IResult> StartGuest(HttpContext context, IConfiguration config)
     {
+        AccountSecurity.ClearChallenge(context);
         var id = Guid.NewGuid();
         await SignIn(context, id);
         return Describe(id, null, !string.IsNullOrEmpty(config["DemoAccounts:Password"]));

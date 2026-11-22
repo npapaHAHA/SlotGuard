@@ -1,0 +1,19 @@
+.account-security-dialog { width: min(520px, calc(100% - 28px)); }
+.account-security-dialog .section-heading { flex-wrap: wrap; }
+#account-security-fields, .security-actions { display: grid; gap: 10px; }
+.security-actions { justify-items: start; }
+.security-caption { color: var(--subtle); font-size: 13px; line-height: 1.55; }
+.security-on { color: var(--accent); font-size: 14px; }
+.security-key, .security-recovery-codes {
+  background: #f0f5ec;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+.security-recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; list-style: none; }
+.security-recovery-codes code { font-size: 12px; }
+@media (max-width: 480px) {
+  .security-recovery-codes { grid-template-columns: 1fr; }
+}

@@ -1,9 +1,6 @@
 let approvalQueue = [];
 let selectedApproval = null;
 const approvalDrafts = new Map();
-const approvalDay = new Intl.DateTimeFormat("ru-RU", {
-  weekday: "short", day: "numeric", month: "long", timeZone: "Europe/Moscow"
-});
 
 function approvalMessage(message, error = false) {
   const node = section("approval-message");
@@ -52,7 +49,7 @@ function renderApprovals(requests) {
   const groups = [];
   for (const request of requests) {
     const date = new Date(request.startsAt);
-    const day = approvalDay.format(date);
+    const day = zoneFormats(viewerZone).shortDate.format(date);
     if (day !== previousDay) {
       group = element("div", "approval-day");
       group.append(element("h3", "", day));
@@ -65,10 +62,11 @@ function renderApprovals(requests) {
     });
     row.dataset.approvalId = request.id;
     row.setAttribute("aria-controls", "approval-detail");
-    const time = element("time", "", timeFormat.format(date));
+    const time = element("time", "", slotTimeRange(date, viewerZone, request.endsAt));
     time.dateTime = request.startsAt;
     const text = element("span", "approval-row-text");
-    text.append(element("strong", "", request.resourceName), element("span", "", request.requester));
+    const label = request.bundle ? request.bundle.map(item => item.resourceName).join(" + ") : request.resourceName;
+    text.append(element("strong", "", label), element("span", "", request.requester));
     row.append(time, text);
     group.append(row);
   }
@@ -97,15 +95,40 @@ function approvalSummary(request) {
   const date = new Date(request.startsAt);
   const header = element("div", "approval-detail-header");
   const appointment = element("div", "approval-appointment");
-  const time = element("time", "approval-start", timeFormat.format(date));
+  const time = element("time", "approval-start", slotTimeRange(date, viewerZone, request.endsAt));
   time.dateTime = request.startsAt;
-  appointment.append(time, element("span", "approval-date", approvalDay.format(date)));
-  const title = element("h2", "", request.resourceName);
+  appointment.append(time, element("span", "approval-date", zoneFormats(viewerZone).shortDate.format(date)));
+  const title = element("h2", "", request.bundle ? "Комплект ресурсов" : request.resourceName);
   title.id = "approval-detail-title";
   title.tabIndex = -1;
   const requester = element("p", "approval-requester", request.requester);
   const returnToList = button("approval-back", "К очереди", () => queueButton(request.id)?.focus());
-  header.append(appointment, title, element("p", "approval-location", request.location), requester, returnToList);
+  header.append(appointment, title);
+  if (!request.bundle) header.append(element("p", "approval-location", request.location));
+  header.append(requester, returnToList);
+  if (request.routing) {
+    const route = element("dl", "approval-routing");
+    const details = [["Цель", request.routing.purpose], ["Участники", request.routing.people],
+      ["Оснащение", request.routing.equipment.join(", ")], ["Согласующий", request.reviewer]];
+    for (const [label, value] of details) {
+      if (!value) continue;
+      const row = element("div", "");
+      row.append(element("dt", "", label), element("dd", "", value));
+      route.append(row);
+    }
+    header.append(route);
+  }
+  for (const resource of request.bundle ?? []) {
+    const row = element("section", "selection-resource");
+    const label = element("div", "selection-resource-label");
+    label.append(symbol("layers"), element("strong", "", resource.resourceName), element("p", "", resource.location));
+    row.append(label);
+    if (resource.answers.length) row.append(renderBookingAnswers(resource.answers));
+    header.append(row);
+  }
+  if (request.answers?.length) {
+    header.append(element("h3", "approval-answers-title", "Ответы гостя"), renderBookingAnswers(request.answers));
+  }
   return header;
 }
 

@@ -1,26 +1,53 @@
-const workspace = { week: null, agendaFilter: "upcoming", agenda: null, catalog: [], editing: null };
+const workspace = { week: null, agendaFilter: "upcoming", agenda: null, catalog: [], templates: [], editing: null, sharing: null };
 let workspaceRequest = 0;
 
-const routes = new Set(["overview", "calendar", "availability", "mine", "manage", "approvals", "team"]);
-const adminRoutes = new Set(["manage", "approvals", "team"]);
+const routes = new Set(["overview", "calendar", "availability", "wizard", "sessions", "mine", "analytics", "manage", "integrations", "approvals", "team", "structure", "branding", "calendar-import", "p3"]);
+const adminRoutes = new Set(["analytics", "manage", "integrations", "team", "structure", "branding", "calendar-import"]);
 const activityLabels = {
   "resource.created": "Добавлен ресурс",
   "resource.updated": "Обновлён ресурс",
+  "resource.template-updated": "Применены настройки шаблона",
+  "resource.template-detached": "Ресурс отвязан от шаблона",
   "resource.archived": "Ресурс перемещён в архив",
   "resource.restored": "Ресурс восстановлен",
+  "resource.public-link": "Настроен доступ по ссылке",
+  "resource.embed": "Настроен виджет бронирования",
+  "resource.schedule": "Обновлён график",
+  "resource.booking-policy": "Изменены правила бронирования",
+  "resource.booking-form": "Обновлены вопросы к брони",
+  "resource.private-link": "Изменены приватные ссылки",
+  "structure.unit": "Обновлено подразделение",
+  "structure.group": "Обновлена группа ресурсов",
+  "structure.member": "Обновлены права участника",
+  "structure.resource": "Изменена группа ресурса",
+  "structure.invited": "Отправлено приглашение",
+  "structure.joined": "Участник принял приглашение",
+  "organization.branding": "Обновлён брендинг организации",
+  "payment.price": "Изменена цена бронирования",
+  "payment.paid": "Принята демо-оплата",
+  "payment.refunded": "Оформлен демо-возврат",
+  "calendar.imported": "Импортирован календарь",
+  "event.published": "Изменена публикация мероприятия",
+  "event.announcement": "Сообщение гостям поставлено в очередь",
+  "discover.listing": "Изменена карточка площадки",
   "maintenance.created": "Запланировано обслуживание",
   "maintenance.removed": "Снята блокировка",
   "booking.approved": "Заявка одобрена",
-  "booking.rejected": "Заявка отклонена"
+  "booking.rejected": "Заявка отклонена",
+  "booking.rescheduled": "Бронь перенесена",
+  "group-session.created": "Открыто групповое занятие",
+  "group-session.cancelled": "Групповое занятие отменено",
+  "group-seat.confirmed": "Заявки на места одобрены",
+  "group-seat.rejected": "Заявки на места отклонены",
+  "group-seat.present": "Отмечен приход",
+  "group-seat.no-show": "Отмечена неявка",
+  "group-seat.clear-attendance": "Исправлена отметка посещаемости"
 };
 const outlookLabels = {
   free: "Свободно", booked: "Бронь", held: "Резерв", pending: "На согласовании", maintenance: "Обслуживание"
 };
 const weekFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
 const dayFormat = new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "UTC" });
-const dateWithYear = new Intl.DateTimeFormat("ru-RU", {
-  day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Moscow"
-});
 
 function section(id) {
   return document.getElementById(id);
@@ -29,39 +56,63 @@ function section(id) {
 function currentScreen() {
   if (state.session?.isAccount && !state.organizationId) return "welcome";
   const route = location.hash.slice(1);
-  if (adminRoutes.has(route) && !isAdmin() || route === "team" && !state.session?.isAccount) return "overview";
+  if (adminRoutes.has(route) && !isAdmin() || route === "team" && !state.session?.isAccount
+    || route === "approvals" && !canReviewBookings()) return "overview";
   return routes.has(route) ? route : "overview";
 }
 
 function renderWorkspaceScreen() {
   const route = currentScreen();
+  const links = document.querySelectorAll("[data-nav]");
+  const nextLink = Array.from(links).find(link => link.dataset.nav === route);
+  const enteringLink = nextLink && nextLink.getAttribute("aria-current") !== "page";
   for (const pane of document.querySelectorAll("[data-screen]")) {
     const entering = pane.hidden && pane.dataset.screen === route;
     pane.hidden = pane.dataset.screen !== route;
     if (entering) reveal(pane);
   }
-  for (const link of document.querySelectorAll("[data-nav]")) {
+  for (const link of links) {
     link.hidden = route === "welcome" || (adminRoutes.has(link.dataset.nav) && !isAdmin())
-      || (link.dataset.nav === "team" && !state.session?.isAccount);
+      || (link.dataset.nav === "team" && !state.session?.isAccount)
+      || (link.dataset.nav === "approvals" && !canReviewBookings());
     if (link.dataset.nav === route) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
+  }
+  if (enteringLink && !nextLink.hidden) {
+    const nav = nextLink.parentElement;
+    if (nav.scrollWidth > nav.clientWidth) {
+      const viewport = nav.getBoundingClientRect();
+      const item = nextLink.getBoundingClientRect();
+      if (item.left < viewport.left) nav.scrollLeft += item.left - viewport.left - 3;
+      else if (item.right > viewport.right) nav.scrollLeft += item.right - viewport.right + 3;
+    }
   }
   const service = section("service-form");
   const serviceUnavailable = state.busy || service.elements.resourceId.options.length === 0;
   for (const control of service.elements) control.disabled = serviceUnavailable;
   section("resource-form").querySelector('button[type="submit"]').disabled = state.busy;
+  section("public-link-form").querySelector('button[type="submit"]').disabled = state.busy;
   section("add-resource").disabled = state.busy;
   for (const control of section("catalog-content").querySelectorAll(".catalog-row button"))
     control.disabled = state.busy;
   renderAvailabilityControls();
   renderApprovalControls();
+  document.querySelector("[data-admin-approval-link]").hidden = !isAdmin();
+  renderGroupControls();
+  renderAnalyticsControls();
+  renderTemplateControls();
+  renderRoutingControls();
+  renderIntegrationControls();
 }
 
 function resetWorkspace() {
+  section("agenda-transfer").hidden = true;
   workspaceRequest++;
   workspace.week = null;
   workspace.agenda = null;
   workspace.catalog = [];
+  workspace.templates = [];
+  section("template-cards").replaceChildren();
   section("overview-content").replaceChildren();
   section("agenda-content").replaceChildren();
   section("catalog-content").replaceChildren();
@@ -69,14 +120,28 @@ function resetWorkspace() {
   section("team-members").replaceChildren();
   section("team-invitations").replaceChildren();
   section("team-message").hidden = true;
+  section("team-invite-results").replaceChildren();
   section("overview-period").textContent = "Загрузка расписания…";
   section("service-message").hidden = true;
   section("service-form").elements.date.value = "";
   section("resource-search").value = "";
-  const dialog = section("resource-dialog");
-  if (dialog.open) dialog.close();
+  for (const id of ["resource-dialog", "public-link-dialog", "pricing-dialog"]) {
+    const dialog = section(id);
+    if (dialog.open) dialog.close();
+  }
+  closeSchedule();
+  document.querySelector(".resource-template-editor")?.close();
+  document.querySelector(".embed-settings-dialog")?.close();
   resetAvailability();
   resetApprovals();
+  resetGroupSessions();
+  resetAnalytics();
+  resetRouting();
+  resetIntegrations();
+  resetCalendarImport();
+  resetP3();
+  resetOrganizationStructure();
+  resetOrganizationBranding();
   renderWorkspaceScreen();
 }
 
@@ -86,8 +151,9 @@ async function loadWorkspace() {
   if (!state.organizationId || route === "calendar" || route === "availability") return;
   try {
     if (route === "overview") {
-      const suffix = workspace.week ? `?week=${encodeURIComponent(workspace.week)}` : "";
-      const [overview, agenda] = await Promise.all([api("/api/workspace/overview" + suffix), api("/api/workspace/me")]);
+      const query = new URLSearchParams({ timeZone: viewerZone });
+      if (workspace.week) query.set("week", workspace.week);
+      const [overview, agenda] = await Promise.all([api(`/api/workspace/overview?${query}`), api("/api/workspace/me")]);
       if (requestId === workspaceRequest) renderOverview(overview, agenda);
     } else if (route === "mine") {
       const agenda = await api("/api/workspace/me");
@@ -95,22 +161,52 @@ async function loadWorkspace() {
         workspace.agenda = agenda;
         renderAgenda();
       }
+    } else if (route === "wizard") {
+      await refreshWizardZone();
+    } else if (route === "integrations") {
+      await loadIntegrations();
+    } else if (route === "calendar-import") {
+      const imports = await api(calendarImportAddress);
+      if (requestId === workspaceRequest) renderCalendarImport(imports);
+    } else if (route === "p3") {
+      const events = await api("/api/events");
+      if (requestId === workspaceRequest) renderP3Events(events);
+    } else if (route === "analytics") {
+      await loadAnalytics();
+    } else if (route === "sessions") {
+      await loadGroupSessions();
     } else if (route === "team") {
       const team = await api("/api/team");
       if (requestId === workspaceRequest) renderTeam(team);
+    } else if (route === "structure") {
+      const structure = await api("/api/structure", { cache: "no-store" });
+      if (requestId === workspaceRequest) renderOrganizationStructure(structure);
+    } else if (route === "branding") {
+      const branding = await api(orgBrandingAddress, { cache: "no-store" });
+      if (requestId === workspaceRequest) renderOrganizationBranding(branding);
     } else if (route === "approvals") {
       const requests = await api("/api/approvals");
       if (requestId === workspaceRequest) renderApprovals(requests);
     } else {
-      const [catalog, activity] = await Promise.all([api("/api/workspace/resources"), api("/api/workspace/activity")]);
+      const [catalog, activity, templates, routing] = await Promise.all([
+        api("/api/workspace/resources"), api("/api/workspace/activity"), api(templateAddress), api(routingSettingsAddress)
+      ]);
       if (requestId === workspaceRequest) {
         workspace.catalog = catalog;
+        workspace.templates = templates;
+        renderResourceTemplates();
+        renderRoutingSettings(routing);
         renderCatalog();
         renderActivity(activity);
       }
     }
   } catch (error) {
-    if (requestId === workspaceRequest) showError(error, loadWorkspace);
+    if (requestId !== workspaceRequest) return;
+    if (route === "approvals" && error.status === 403 && !isAdmin()) {
+      await refreshReviewerAccess();
+      if (!canReviewBookings()) return loadWorkspace();
+    }
+    showError(error, loadWorkspace);
   }
 }
 
@@ -216,10 +312,13 @@ function nextBookings(agenda) {
     empty.append(action);
     panel.append(empty);
   } else {
-    for (const item of agenda.upcoming.slice(0, 4)) {
-      const action = button("next-booking", undefined, () => goToCalendar(item));
+    for (const item of agendaGroups(agenda.upcoming).slice(0, 4)) {
+      const action = button("next-booking", undefined, () => {
+        if (item.bundleId) location.hash = "mine";
+        else goToCalendar(item);
+      });
       const time = element("div", "data-title");
-      time.append(element("strong", "", item.resourceName), element("span", "", appointmentTime(item.startsAt)));
+      time.append(element("strong", "", item.resourceName), element("span", "", appointmentTime(item.startsAt, viewerZone, true, item.endsAt)));
       if (item.approvalStatus === "pending") time.append(element("span", "", "На согласовании"));
       const icon = symbol(item.holdExpiresAt ? "schedule" : "event_available");
       icon.classList.add("empty-symbol");
@@ -252,22 +351,37 @@ function resourceBreakdown(resources) {
   return panel;
 }
 
-function appointmentTime(value) {
+function appointmentTime(value, zone = viewerZone, showOffset = true, endsAt) {
   const date = new Date(value);
-  return `${dateWithYear.format(date)} · ${timeFormat.format(date)}`;
+  const formats = zoneFormats(zone);
+  const time = endsAt ? slotTimeRange(value, zone, endsAt) : showOffset ? timeWithOffset(date, zone) : formats.time.format(date);
+  return `${formats.date.format(date)} · ${time}`;
 }
 
 function goToCalendar(item) {
-  const week = item.week ?? (item.startsAt
-    ? isoPlusDays(item.startsAt.slice(0, 10), -((new Date(item.startsAt).getUTCDay() + 6) % 7))
-    : undefined);
+  const week = item.startsAt ? weekOf(item.startsAt) : item.week;
   return run(async () => {
     location.hash = "calendar";
-    await loadCalendar(item.resourceId, week);
+    await loadCalendar(item.resourceId, week, false, state.organizationId, item.durationMinutes ?? durationOf(item.startsAt, item.endsAt));
     const slot = allSlots().find(candidate => candidate.startsAt === item.startsAt);
     if (slot) state.selected = slot.startsAt;
     scrollSelectionIntoView();
   }, () => goToCalendar(item));
+}
+
+function agendaGroups(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = item.bundleId ? `${item.bundleId}|${item.startsAt}|${item.cancelledAt ?? ""}` : item.id;
+    const members = groups.get(key) ?? [];
+    members.push(item);
+    groups.set(key, members);
+  }
+  return [...groups.values()].map(members => {
+    const first = members[0];
+    return first.bundleId ? { ...first, bundleMembers: members,
+      resourceName: members.map(item => item.resourceName).join(" + ") } : first;
+  });
 }
 
 function renderAgenda() {
@@ -281,16 +395,28 @@ function renderAgenda() {
     content.replaceChildren(element("p", "list-empty", message));
     return;
   }
-  content.replaceChildren(...items.map(item => {
+  content.replaceChildren(...agendaGroups(items).map(item => {
     const row = element("div", "data-row agenda-row");
     const description = element("div", "data-title");
-    description.append(element("strong", "", item.resourceName), element("span", "", item.location));
+    description.append(element("strong", "", item.resourceName));
+    if (item.bundleMembers) {
+      description.append(element("span", "", `Комплект · ${item.bundleMembers.length} ресурса`));
+      for (const member of item.bundleMembers)
+        description.append(element("span", "", `${member.resourceName} · ${member.location}`));
+    } else description.append(element("span", "", item.location));
+    if (item.seriesId) description.append(element("span", "", "Еженедельная серия"));
+    if (item.routing) {
+      description.append(element("span", "", `Цель · ${item.routing.purpose}`));
+      if (item.approvalStatus === "pending" && item.reviewer)
+        description.append(element("span", "", `Согласующий · ${item.reviewer}`));
+    }
     const time = element("div", "data-title");
-    time.append(element("strong", "", appointmentTime(item.startsAt)));
+    const end = item.endsAt ?? (item.durationMinutes ? new Date(Date.parse(item.startsAt) + item.durationMinutes * 60000) : null);
+    time.append(element("strong", "", appointmentTime(item.startsAt, viewerZone, true, end)));
     const actions = element("div", "row-actions");
     if (workspace.agendaFilter === "history") {
       const expired = item.holdExpiresAt && (!item.cancelledAt || Date.parse(item.holdExpiresAt) <= Date.parse(item.cancelledAt));
-      const label = item.approvalStatus === "rejected" ? "Отклонено"
+      const label = item.isRescheduled ? "Перенесено" : item.approvalStatus === "rejected" ? "Отклонено"
         : item.approvalStatus === "pending" ? (item.cancelledAt ? "Заявка отозвана" : "Срок заявки истёк")
         : expired ? "Резерв истёк" : item.cancelledAt ? "Отменено" : "Завершено";
       time.append(element("span", item.approvalStatus === "rejected" ? "pill rejected" : "", label));
@@ -301,16 +427,19 @@ function renderAgenda() {
     } else {
       const pending = item.approvalStatus === "pending";
       const label = pending ? "На согласовании" : item.approvalStatus === "approved" ? "Одобрено"
-        : item.holdExpiresAt ? `Резерв до ${timeFormat.format(new Date(item.holdExpiresAt))}` : "Подтверждено";
+        : item.holdExpiresAt ? `Резерв до ${zoneFormats(viewerZone).time.format(new Date(item.holdExpiresAt))}` : "Подтверждено";
       const style = pending ? "pill pending" : item.approvalStatus === "approved" ? "pill approved" : "";
       time.append(element("span", style, label));
+      const deadlines = bookingDeadlines(item.changes, item.startsAt, viewerZone);
+      if (deadlines) time.append(element("span", "", deadlines));
       if (item.holdExpiresAt) {
         actions.append(button("page-action small", item.requiresApproval ? "Отправить заявку" : "Подтвердить", () =>
-          updateBooking(`/api/bookings/${item.id}/confirm`, { method: "POST" },
-            item.requiresApproval ? "Заявка отправлена на согласование." : "Бронирование подтверждено.")));
-      }
-      const action = pending ? "Отозвать заявку" : item.holdExpiresAt ? "Отказаться" : "Отменить бронь";
-      actions.append(button("outline-action", action, () =>
+          confirmBookingHold(item.id, item.resourceId, null, item.requiresApproval)));
+      } else if (item.changes?.canReschedule !== false)
+        actions.append(button("outline-action", item.bundleId ? "Перенести комплект" : "Перенести", () => showWorkspaceReschedule(item)));
+      const action = pending ? "Отозвать заявку" : item.holdExpiresAt ? "Отказаться"
+        : item.bundleId ? "Отменить комплект" : "Отменить бронь";
+      if (item.changes?.canCancel !== false) actions.append(button("outline-action", action, () =>
         updateBooking(`/api/bookings/${item.id}`, { method: "DELETE" }, pending ? "Заявка отозвана." : "Запись отменена.")));
     }
     if (item.approvalReason) {
@@ -325,6 +454,32 @@ function renderAgenda() {
   }));
 }
 
+function showWorkspaceReschedule(booking) {
+  if (state.busy) return;
+  section("agenda-transfer").hidden = true;
+  const address = `/api/bookings/${booking.id}/reschedule`;
+  const organization = state.organizationId;
+  openBookingReschedule({
+    booking, zone: viewerZone,
+    load: () => api(address, undefined, organization),
+    save: startsAt => api(address, jsonRequest("POST", { startsAt }), organization),
+    onMoved: result => run(async () => {
+      if (currentScreen() === "calendar") {
+        await loadCalendar(result.resourceId, weekOf(result.startsAt), false, organization, durationOf(result.startsAt, result.endsAt));
+        state.selected = result.startsAt;
+        scrollSelectionIntoView();
+      } else await refreshCalendar();
+      await loadWorkspace();
+      const status = result.approvalStatus === "pending" ? "Новое время отправлено на согласование" : "Бронь перенесена";
+      const notice = `${status} · ${appointmentTime(result.startsAt, viewerZone, true, result.endsAt)}.`;
+      const banner = section("agenda-transfer");
+      banner.textContent = notice;
+      banner.hidden = false;
+      ui.status.textContent = notice;
+    })
+  });
+}
+
 function renderCatalog() {
   const search = section("resource-search").value.trim().toLocaleLowerCase("ru");
   const visible = workspace.catalog.filter(item => `${item.name} ${item.location}`.toLocaleLowerCase("ru").includes(search));
@@ -332,9 +487,51 @@ function renderCatalog() {
     const row = element("div", "data-row catalog-row");
     const title = element("div", "data-title");
     title.append(element("strong", "", item.name), element("span", "", item.location));
+    if (item.priceMinor != null) title.append(element("span", "", `${bookingPrice(item.priceMinor)} за бронь`));
+    const template = templateByKey(item.templateId);
+    if (template) title.append(element("span", "template-origin", `Шаблон · ${template.name}`));
     const edit = button("outline-action", "Изменить", () => editResource(item));
     edit.disabled = state.busy;
-    row.append(title, element("span", `pill ${item.isArchived ? "past" : "available"}`, item.isArchived ? "В архиве" : "Активен"), edit);
+    const actions = element("div", "catalog-actions");
+    actions.append(edit);
+    if (!item.isArchived) {
+      const schedule = button("outline-action", "График", () => editSchedule(item));
+      schedule.setAttribute("aria-label", `График: ${item.name}`);
+      schedule.disabled = state.busy;
+      const share = button("outline-action", "Ссылка", () => editPublicLink(item));
+      share.setAttribute("aria-label", `Публичная ссылка: ${item.name}`);
+      share.disabled = state.busy;
+      const embed = button("outline-action", "Виджет", () => editEmbedSettings(item));
+      embed.setAttribute("aria-label", `Виджет: ${item.name}`);
+      embed.disabled = state.busy;
+      const questions = button("outline-action", "Вопросы", () => editBookingQuestions(item));
+      questions.setAttribute("aria-label", `Вопросы к брони: ${item.name}`);
+      questions.disabled = state.busy;
+      const invites = button("outline-action", "Приватные ссылки", () => editPrivateLinks(item));
+      invites.setAttribute("aria-label", `Приватные ссылки: ${item.name}`);
+      invites.disabled = state.busy;
+      const integration = button("outline-action", "Google Calendar", () => editGoogleCalendar(item));
+      integration.setAttribute("aria-label", `Google Calendar: ${item.name}`);
+      integration.disabled = state.busy;
+      const copy = button("outline-action", "В шаблон", () => templateFromResource(item));
+      copy.setAttribute("aria-label", `Сохранить как шаблон: ${item.name}`);
+      copy.disabled = state.busy;
+      const price = button("outline-action", "Цена", () => editResourcePrice(item));
+      price.setAttribute("aria-label", `Цена: ${item.name}`);
+      price.disabled = state.busy;
+      const listing = button("outline-action", "Каталог", () => editDiscoverListing(item));
+      listing.setAttribute("aria-label", `Каталог: ${item.name}`);
+      listing.disabled = state.busy;
+      actions.append(schedule, share, price, listing, embed, questions, invites, integration, copy);
+    }
+    if (template) {
+      const detach = button("outline-action", "Отвязать шаблон", () => detachResourceTemplate(item, template));
+      detach.setAttribute("aria-label", `Отвязать шаблон: ${item.name}`);
+      detach.disabled = state.busy;
+      actions.append(detach);
+    }
+    const status = item.isArchived ? "В архиве" : item.publicLinkId ? "По ссылке" : "Активен";
+    row.append(title, element("span", `pill ${item.isArchived ? "past" : "available"}`, status), actions);
     return row;
   }) : [element("p", "list-empty", search ? "По запросу ничего не найдено." : "Добавьте первый ресурс.")]));
 
@@ -345,11 +542,41 @@ function renderCatalog() {
   field.resourceId.replaceChildren(...active.map(item => new Option(item.name, item.id)));
   if (active.some(item => item.id === selected)) field.resourceId.value = selected;
   for (const input of form.elements) input.disabled = state.busy || !active.length;
-  if (!field.date.value) {
-    const today = state.calendar?.today ?? new Date().toISOString().slice(0, 10);
-    field.date.min = today;
-    field.date.value = isoPlusDays(today, 1);
-  }
+  renderServiceZone();
+}
+
+function editBookingQuestions(resource) {
+  const organization = state.organizationId;
+  const id = encodeURIComponent(resource.id);
+  return run(async () => {
+    const current = await api(`/api/resources/${id}/booking-form`, undefined, organization);
+    openBookingFormEditor(resource, current,
+      payload => api(`/api/workspace/resources/${id}/booking-form`, jsonRequest("PUT", payload), organization),
+      () => run(async () => {
+        ui.status.textContent = "Вопросы к брони сохранены.";
+        await refreshCalendar();
+        await loadWorkspace();
+      }));
+  });
+}
+
+function serviceTimeZone() {
+  return serviceResource()?.timeZone ?? defaultTimeZone;
+}
+
+function serviceResource() {
+  const selected = section("service-form").elements.resourceId.value;
+  return workspace.catalog.find(item => item.id === selected);
+}
+
+function renderServiceZone() {
+  const field = section("service-form").elements;
+  const zone = serviceTimeZone();
+  section("service-end-caption").textContent = serviceResource()?.flexibleBooking ? "До (конец работ)" : "Последний старт";
+  const today = zoneFormats(zone).day.format(new Date());
+  section("service-zone").textContent = field.resourceId.value ? `Время ресурса · ${timeZoneLabel(zone)}` : "";
+  field.date.min = today;
+  if (!field.date.value || field.date.value < today) field.date.value = isoPlusDays(today, 1);
 }
 
 function renderActivity(entries) {
@@ -365,7 +592,7 @@ function renderActivity(entries) {
   }) : [element("p", "list-empty", "Изменений пока нет.")]));
 }
 
-function editResource(item) {
+function editResource(item, template = null) {
   workspace.editing = item;
   section("resource-dialog-title").textContent = item ? "Изменить ресурс" : "Новый ресурс";
   section("archive-field").hidden = !item;
@@ -378,14 +605,73 @@ function editResource(item) {
   fields.equipment.value = item?.equipment?.join(", ") ?? "";
   fields.requiresApproval.checked = item?.requiresApproval ?? false;
   fields.isArchived.checked = item?.isArchived ?? false;
+  prepareResourceTemplate(item, template);
   section("resource-dialog").showModal();
 }
 
-function formProblem(node, error) {
-  const conflicts = error.conflicts?.map(value => timeFormat.format(new Date(value))).join(", ");
+function formProblem(node, error, zone = viewerZone) {
+  const conflicts = error.conflicts?.map(value => timeWithOffset(value, zone)).join(", ");
   node.textContent = conflicts ? `${error.message} Занято — ${conflicts}.` : error.message;
   node.classList.add("error");
   node.hidden = false;
+}
+
+function editPublicLink(item) {
+  workspace.sharing = item;
+  section("public-link-resource").textContent = item.name;
+  const fields = section("public-link-form").elements;
+  fields.enabled.checked = Boolean(item.publicLinkId);
+  fields.photoUrl.value = item.publicPhotoUrl ?? "";
+  section("public-link-message").hidden = true;
+  showPublicLink(item.publicLinkId);
+  section("public-link-dialog").showModal();
+}
+
+function showPublicLink(linkId) {
+  section("public-link-result").hidden = !linkId;
+  const url = linkId ? new URL(`/book/${linkId}`, location.origin).href : "";
+  section("public-link-url").value = url;
+  section("public-link-open").href = url;
+}
+
+function publicLinkMessage(text) {
+  const message = section("public-link-message");
+  message.hidden = false;
+  message.classList.remove("error");
+  message.textContent = text;
+}
+
+function bindPublicLinks() {
+  const dialog = section("public-link-dialog");
+  section("public-link-close").addEventListener("click", () => dialog.close());
+  section("public-link-copy").addEventListener("click", async () => {
+    const field = section("public-link-url");
+    try {
+      await navigator.clipboard.writeText(field.value);
+      publicLinkMessage("Ссылка скопирована.");
+    } catch {
+      field.select();
+      publicLinkMessage("Ссылка выделена. Скопируйте её из поля.");
+    }
+  });
+  section("public-link-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const fields = event.currentTarget.elements;
+    const resource = workspace.sharing;
+    const payload = { enabled: fields.enabled.checked, photoUrl: fields.photoUrl.value };
+    section("public-link-message").hidden = true;
+    run(async () => {
+      try {
+        const path = `/api/workspace/resources/${encodeURIComponent(resource.id)}/public-link`;
+        const settings = await api(path, jsonRequest("PUT", payload));
+        showPublicLink(settings.publicLinkId);
+        publicLinkMessage(settings.publicLinkId ? "Доступ по ссылке открыт." : "Доступ по ссылке закрыт.");
+        await loadWorkspace();
+      } catch (error) {
+        formProblem(section("public-link-message"), error);
+      }
+    });
+  });
 }
 
 function jsonRequest(method, payload) {
@@ -393,6 +679,13 @@ function jsonRequest(method, payload) {
 }
 
 function bindWorkspace() {
+  bindPublicLinks();
+  bindResourceSchedules();
+  bindGroupSessions();
+  bindAnalytics();
+  bindResourceTemplates();
+  bindRouting();
+  bindIntegrations();
   document.querySelector(".skip-link").addEventListener("click", event => {
     event.preventDefault();
     section("main-content").focus();
@@ -423,9 +716,14 @@ function bindWorkspace() {
     const equipment = data.get("equipment").split(",").map(item => item.trim()).filter(Boolean);
     const payload = {
       name: data.get("name"), location: data.get("location"), isArchived: data.has("isArchived"),
-      requiresApproval: data.has("requiresApproval"),
+      requiresApproval: form.elements.requiresApproval.checked,
       details: { type: data.get("type"), capacity: data.get("capacity") ? Number(data.get("capacity")) : null, equipment }
     };
+    if (!workspace.editing && form.elements.templateKey.value) {
+      const template = templateByKey(form.elements.templateKey.value);
+      payload.templateKey = form.elements.templateKey.value;
+      payload.templateRevision = template?.revision;
+    }
     const message = section("resource-error");
     message.hidden = true;
     run(async () => {
@@ -433,6 +731,10 @@ function bindWorkspace() {
         const suffix = workspace.editing ? `/${encodeURIComponent(workspace.editing.id)}` : "";
         await api("/api/workspace/resources" + suffix, jsonRequest(workspace.editing ? "PUT" : "POST", payload));
       } catch (error) {
+        if (!workspace.editing && payload.templateKey && error.status === 409) {
+          await loadWorkspace();
+          prepareResourceTemplate(null, null);
+        }
         formProblem(message, error);
         return;
       }
@@ -441,26 +743,27 @@ function bindWorkspace() {
     });
   });
   const serviceForm = section("service-form");
-  for (const name of ["fromHour", "throughHour"])
-    serviceForm.elements[name].replaceChildren(...[9, 11, 13, 15, 17].map(hour => new Option(`${String(hour).padStart(2, "0")}:00`, hour)));
+  serviceForm.elements.resourceId.addEventListener("change", renderServiceZone);
   serviceForm.addEventListener("submit", event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(serviceForm));
+    if (serviceResource()?.flexibleBooking) {
+      data.untilTime = data.throughTime;
+      delete data.throughTime;
+    }
     const message = section("service-message");
     message.hidden = true;
     run(async () => {
       try {
-        const result = await api("/api/maintenance/window", jsonRequest("POST", {
-          ...data, fromHour: Number(data.fromHour), throughHour: Number(data.throughHour)
-        }));
+        const result = await api("/api/maintenance/window", jsonRequest("POST", data));
         message.classList.remove("error");
-        message.textContent = `Закрыто слотов — ${result.count}.`;
+        message.textContent = data.untilTime ? "Интервал обслуживания закрыт." : `Закрыто слотов — ${result.count}.`;
         message.hidden = false;
         serviceForm.elements.reason.value = "";
         if (state.calendar) await refreshCalendar();
         await loadWorkspace();
       } catch (error) {
-        formProblem(message, error);
+        formProblem(message, error, serviceTimeZone());
       }
     });
   });

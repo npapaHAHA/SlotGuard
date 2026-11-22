@@ -1,0 +1,32 @@
+.slot-diagnostics {
+  width: min(565px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: clamp(17px, 4vw, 28px);
+  border: 1px solid #dbe4d8;
+  border-radius: 20px;
+}
+.slot-diagnostics-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.slot-diagnostics-heading h2 { margin: 0; font-size: clamp(23px, 6vw, 29px); letter-spacing: -.04em; }
+.slot-diagnostics-heading p, .slot-check-zone { margin: 4px 0 0; font-size: 13px; color: var(--subtle); overflow-wrap: anywhere; }
+.slot-check-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 15px 0 5px; }
+.slot-check-fields { flex: 1 1 240px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px; min-width: 0; }
+.slot-check-fields input { min-height: 35px; }
+.slot-check-form > button { min-height: 35px; }
+.slot-diagnostics .form-message { margin: 12px 0 0; }
+.slot-check-reasons { display: grid; gap: 6px; margin-top: 14px; }
+.slot-diagnosis { display: grid; justify-items: start; gap: 5px; padding: 11px 13px; border-radius: 9px; border: 1px solid #ecdcba; background: #fffaed; }
+.slot-diagnosis[data-code="available"] { border-color: #dbe7d6; background: #f1f7ec; }
+.slot-diagnosis strong { font-size: 14px; line-height: 1.4; }
+.slot-diagnosis p, .slot-diagnosis-offset { margin: 0; color: var(--subtle); font-size: 13px; overflow-wrap: anywhere; }
+.slot-diagnosis .page-action { margin-top: 4px; }
+.slot-check-choices { margin-top: 16px; }
+.slot-check-choices h3 { margin: 0 0 7px; font-size: 14px; }
+.slot-check-choices ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; list-style: none; }
+.slot-alternative { width: 100%; height: 100%; justify-content: start; text-align: left; font-size: 12px; padding-inline: 9px; }
+.slot-check-action { margin-top: 8px; }
+.slot-check-day { width: 100%; background: transparent; }
+.slot-check-day:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+@media (max-width: 480px) {
+  .slot-check-choices ul { grid-template-columns: minmax(0, 1fr); }
+  .slot-check-form > button { width: 100%; }
+}

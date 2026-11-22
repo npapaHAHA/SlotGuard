@@ -5,21 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#172720">
   <title>SlotGuard — рабочее пространство</title>
+  <script src="/theme.js"></script>
   <link rel="icon" type="image/svg+xml" sizes="any" href="/design/slotguard-mark.svg">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/p3.css">
   <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/organization-structure.css">
+  <link rel="stylesheet" href="/booking-brand.css">
+  <link rel="stylesheet" href="/organization-branding.css">
+  <link rel="stylesheet" href="/time-zones.css">
+  <link rel="stylesheet" href="/resource-schedule.css">
+  <link rel="stylesheet" href="/resource-templates.css">
+  <link rel="stylesheet" href="/reschedule.css">
+  <link rel="stylesheet" href="/weekly-series.css">
+  <link rel="stylesheet" href="/slot-diagnostics.css">
+  <link rel="stylesheet" href="/booking-questions.css">
+  <link rel="stylesheet" href="/private-links.css">
+  <link rel="stylesheet" href="/google-calendar.css">
   <link rel="stylesheet" href="/accounts.css">
+  <link rel="stylesheet" href="/account-security.css">
   <link rel="stylesheet" href="/availability.css">
+  <link rel="stylesheet" href="/routing.css">
+  <link rel="stylesheet" href="/integrations.css">
+  <link rel="stylesheet" href="/calendar-import.css">
+  <link rel="stylesheet" href="/embed-settings.css">
   <link rel="stylesheet" href="/approvals.css">
+  <link rel="stylesheet" href="/group-sessions.css">
+  <link rel="stylesheet" href="/analytics.css">
+  <link rel="stylesheet" href="/week-map.css">
   <link rel="stylesheet" href="/experience.css">
+  <link rel="stylesheet" href="/theme.css">
   <script src="/vendor/signalr/signalr.min.js" defer></script>
+  <script src="/time-zones.js" defer></script>
+  <script src="/booking-policy.js" defer></script>
+  <script src="/reschedule.js" defer></script>
+  <script src="/booking-questions.js" defer></script>
+  <script src="/private-links.js" defer></script>
+  <script src="/google-calendar.js" defer></script>
+  <script src="/weekly-series.js" defer></script>
+  <script src="/slot-diagnostics.js" defer></script>
   <script src="/workspace.js" defer></script>
+  <script src="/booking-payments.js" defer></script>
+  <script src="/resource-pricing.js" defer></script>
+  <script src="/organization-structure.js" defer></script>
+  <script src="/booking-brand.js" defer></script>
+  <script src="/organization-branding.js" defer></script>
+  <script src="/resource-schedule.js" defer></script>
+  <script src="/resource-templates.js" defer></script>
   <script src="/availability.js" defer></script>
+  <script src="/routing.js" defer></script>
+  <script src="/integrations.js" defer></script>
+  <script src="/calendar-import.js" defer></script>
+  <script src="/embed-settings.js" defer></script>
+  <script src="/embed.js" defer></script>
+  <script src="/resource-selections.js" defer></script>
   <script src="/approvals.js" defer></script>
+  <script src="/group-sessions.js" defer></script>
+  <script src="/analytics.js" defer></script>
   <script src="/accounts.js" defer></script>
+  <script src="/account-security.js" defer></script>
   <script src="/live-calendar.js" defer></script>
+  <script src="/motion.js" defer></script>
+  <script src="/week-map.js" defer></script>
   <script src="/experience.js" defer></script>
+  <script src="/calendar-views.js" defer></script>
+  <script src="/calendar-feedback.js" defer></script>
+  <script src="/p3.js" defer></script>
   <script src="/app.js" defer></script>
+  <script src="/pwa.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">К содержимому</a>
@@ -32,9 +86,14 @@
     <nav aria-label="Разделы рабочего пространства">
       <a href="#overview" data-nav="overview" aria-current="page"><span class="symbol" aria-hidden="true">grid_view</span>Обзор</a>
       <a href="#calendar" data-nav="calendar"><span class="symbol" aria-hidden="true">calendar_month</span>Календарь</a>
+      <a href="#wizard" data-nav="wizard"><span class="symbol" aria-hidden="true">meeting_room</span>Мастер подбора</a>
       <a href="#availability" data-nav="availability"><span class="symbol" aria-hidden="true">search</span>Поиск слота</a>
+      <a href="#sessions" data-nav="sessions"><span class="symbol" aria-hidden="true">group</span>Занятия</a>
       <a href="#mine" data-nav="mine"><span class="symbol" aria-hidden="true">event_available</span>Мои записи</a>
+      <a href="#p3" data-nav="p3"><span class="symbol" aria-hidden="true">grid_view</span>Встречи</a>
+      <a href="#analytics" data-nav="analytics" hidden><span class="analytics-nav-icon" aria-hidden="true"></span>Аналитика</a>
       <a href="#manage" data-nav="manage" hidden><span class="symbol" aria-hidden="true">settings</span>Управление</a>
+      <a href="#structure" data-nav="structure" hidden><span class="symbol" aria-hidden="true">group</span>Структура</a>
       <a href="#approvals" data-nav="approvals" hidden><span class="symbol" aria-hidden="true">check_circle</span>Заявки</a>
       <a href="#team" data-nav="team" hidden><span class="symbol" aria-hidden="true">group</span>Команда</a>
     </nav>
@@ -50,9 +109,12 @@
       <div class="account-controls">
         <button type="button" id="create-organization" class="icon-button today-button" hidden>Новая организация</button>
         <span class="guest" id="guest" hidden></span>
+        <button type="button" id="account-security-button" class="outline-action" hidden>Безопасность</button>
         <button type="button" id="account-button" class="page-action" hidden>Войти</button>
         <button type="button" id="session-button" class="icon-button today-button" hidden>Демо-вход</button>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
       </div>
+      <label class="display-zone" for="display-time-zone">Моё время<select id="display-time-zone" aria-label="Часовой пояс отображения"></select></label>
     </div>
   </header>
   <main class="shell" id="main-content" tabindex="-1">
@@ -82,15 +144,82 @@
           <p class="hero-period"><span class="symbol" aria-hidden="true">calendar_month</span><span id="overview-period">Загрузка расписания…</span></p>
           <h1 id="overview-title">Обзор расписания</h1>
           <p class="hero-caption">Бронируйте помещения и оборудование вашей команды.</p>
-          <a href="#calendar" class="page-action hero-action">Открыть календарь <span class="symbol" aria-hidden="true">arrow_outward</span></a>
+          <div class="overview-hero-actions">
+            <a href="#calendar" class="page-action hero-action">Открыть календарь <span class="symbol" aria-hidden="true">arrow_outward</span></a>
+            <a href="/demo/" class="outline-action">Демо проекта ↗</a>
+          </div>
         </div>
       </div>
       <div id="overview-content"></div>
     </section>
+    <section data-screen="analytics" aria-labelledby="analytics-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="analytics-title">Аналитика</h1><p id="analytics-zone" class="intro"></p></div>
+      </div>
+      <section class="panel analytics-filter" aria-label="Параметры отчёта">
+        <form id="analytics-form" class="workspace-form">
+          <div class="analytics-fields">
+            <label>С<input type="date" name="from" required></label>
+            <label>По<input type="date" name="through" required></label>
+            <label>Ресурс<select name="resourceId"><option value="">Все ресурсы</option></select></label>
+            <button class="page-action" type="submit">Применить</button>
+          </div>
+          <div class="analytics-presets" aria-label="Быстрый выбор периода">
+            <button class="outline-action" type="button" data-report-period="7">7 дней</button>
+            <button class="outline-action" type="button" data-report-period="30">30 дней</button>
+            <button class="outline-action" type="button" data-report-period="week">Эта неделя</button>
+          </div>
+        </form>
+      </section>
+      <p class="form-message" id="analytics-message" role="status" hidden></p>
+      <div id="analytics-content" aria-live="off"></div>
+    </section>
+    <section data-screen="wizard" aria-labelledby="wizard-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="wizard-title">Мастер подбора</h1><p class="intro">Подберите свободное помещение или оборудование под вашу задачу.</p></div>
+      </div>
+      <ol class="wizard-stages" aria-label="Этапы подбора">
+        <li data-wizard-stage="1" aria-current="step">Цель</li>
+        <li data-wizard-stage="2">Время</li>
+        <li data-wizard-stage="3">Варианты</li>
+      </ol>
+      <div id="wizard-message" class="panel availability-message" role="status" hidden>
+        <p></p><a href="#mine" class="text-link" hidden>Мои записи ↗</a>
+      </div>
+      <form id="wizard-form" class="panel wizard-form workspace-form">
+        <div id="wizard-task">
+          <fieldset class="wizard-purpose">
+            <legend>Что планируете?</legend>
+            <div class="wizard-purpose-options">
+              <label><input type="radio" name="purpose" value="meeting" checked><strong>Встреча</strong><span>Обсуждение, созвон или презентация</span></label>
+              <label><input type="radio" name="purpose" value="recording"><strong>Запись</strong><span>Подкаст, видео или звук</span></label>
+              <label><input type="radio" name="purpose" value="workshop"><strong>Практикум</strong><span>Занятие или лабораторная работа</span></label>
+              <label><input type="radio" name="purpose" value="equipment"><strong>Оборудование</strong><span>Работа с нужным устройством</span></label>
+            </div>
+          </fieldset>
+          <label id="wizard-people-label">Число участников<input type="number" name="people" min="1" max="10000" value="2" required></label>
+          <fieldset class="filter-equipment" id="wizard-equipment-panel" hidden>
+            <legend>Нужное оснащение</legend><div class="filter-chips" id="wizard-equipment"></div>
+          </fieldset>
+          <footer class="wizard-actions"><button type="button" id="wizard-next" class="page-action">Выбрать время <span aria-hidden="true">↗</span></button></footer>
+        </div>
+        <div id="wizard-timing" hidden>
+          <h2>Когда понадобится ресурс?</h2>
+          <p id="wizard-zone" class="zone-caption"></p>
+          <div class="wizard-timing-fields">
+            <label>Дата<input type="date" name="date" required></label>
+            <label>Начало<input type="time" name="time" value="11:00" required></label>
+            <label>Длительность<select name="durationMinutes"><option value="30">30 минут</option><option value="60" selected>60 минут</option><option value="90">90 минут</option></select></label>
+          </div>
+          <footer class="wizard-actions"><button type="button" id="wizard-back" class="outline-action">Назад</button><button type="submit" class="page-action">Подобрать варианты</button></footer>
+        </div>
+      </form>
+      <div id="wizard-results" hidden></div>
+    </section>
     <section data-screen="availability" aria-labelledby="availability-title" hidden>
       <div class="page-heading search-heading">
-        <div><h1 id="availability-title">Поиск свободного слота</h1>
-          <p class="intro">Назначьте время и выберите, что понадобится для встречи или работы.</p></div>
+        <h1 id="availability-title">Поиск свободного слота</h1>
+        <a href="#wizard" class="outline-action">Подбор по цели ↗</a>
       </div>
       <div class="availability-layout">
         <section class="panel listing search-filters" aria-labelledby="search-filters-title">
@@ -98,30 +227,46 @@
           <form id="availability-form" class="workspace-form">
             <div class="search-fields">
               <label>Дата<input type="date" name="date" required></label>
-              <label>Время (МСК)<select name="hour" required></select></label>
-              <label>Тип ресурса
-                <select name="type">
-                  <option value="">Все типы</option>
-                  <option value="room">Помещение</option>
-                  <option value="equipment">Оборудование</option>
-                  <option value="studio">Студия</option>
-                  <option value="other">Другое</option>
-                </select>
-              </label>
-              <label>Вместимость от<input type="number" name="capacity" min="1" max="10000" placeholder="Человек"></label>
-              <button type="submit" class="page-action"><span class="symbol" aria-hidden="true">search</span>Найти ресурсы</button>
+              <label>Время<input type="time" name="time" aria-describedby="availability-zone" value="09:00" required></label>
+              <label>Длительность<select name="durationMinutes" aria-label="Длительность"><option value="30">30 минут</option><option value="60" selected>60 минут</option><option value="90">90 минут</option></select></label>
+              <button type="submit" class="page-action"><span class="symbol" aria-hidden="true">search</span><span id="availability-submit-label">Найти слоты</span></button>
             </div>
-            <fieldset id="availability-equipment-panel" class="filter-equipment">
-              <legend>Оснащение</legend>
-              <div id="availability-equipment" class="filter-chips"></div>
-            </fieldset>
+            <p class="zone-caption" id="availability-zone"></p>
+            <div class="search-refinements">
+              <details id="availability-filter-panel" class="search-filter-panel">
+                <summary id="availability-filter-toggle" class="outline-action">
+                  Фильтры<span id="availability-filter-count" hidden></span><span class="search-chevron" aria-hidden="true"></span>
+                </summary>
+                <div class="search-filter-fields">
+                  <label>Тип ресурса
+                    <select name="type">
+                      <option value="">Все типы</option>
+                      <option value="room">Помещение</option>
+                      <option value="equipment">Оборудование</option>
+                      <option value="studio">Студия</option>
+                      <option value="other">Другое</option>
+                    </select>
+                  </label>
+                  <label>Вместимость от<input type="number" name="capacity" min="1" max="10000" inputmode="numeric" placeholder="Человек"></label>
+                  <fieldset id="availability-equipment-panel" class="filter-equipment" hidden>
+                    <legend>Оснащение</legend>
+                    <div id="availability-equipment" class="filter-chips"></div>
+                  </fieldset>
+                </div>
+              </details>
+              <div class="search-active-filters" id="availability-active-filters" hidden>
+                <div id="availability-filter-chips" role="group" aria-label="Активные фильтры"></div>
+                <button id="availability-reset-filters" type="button" class="text-link">Сбросить фильтры</button>
+              </div>
+            </div>
           </form>
         </section>
         <div class="availability-output">
-          <div id="availability-message" class="panel availability-message" role="status" hidden>
+          <div id="availability-message" class="panel availability-message" role="status" tabindex="-1" hidden>
             <p></p><a class="text-link" href="#mine" hidden>Мои записи <span aria-hidden="true">↗</span></a>
           </div>
-          <div id="availability-results">
+          <p id="availability-result-status" class="sr-only" role="status"></p>
+          <div id="availability-results" aria-busy="false">
             <div class="panel availability-empty">
               <span class="symbol" aria-hidden="true">event_available</span>
               <h2>Свободные варианты</h2>
@@ -129,6 +274,21 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+    <section data-screen="sessions" aria-labelledby="sessions-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="sessions-title">Занятия</h1><p class="intro">Бронируйте места на практикумы и встречи.</p></div>
+        <button id="new-group-session" type="button" class="page-action" hidden><span class="symbol" aria-hidden="true">add</span>Создать занятие</button>
+      </div>
+      <div class="segment" aria-label="Список занятий">
+        <button type="button" data-session-list="all" aria-pressed="true">Все занятия</button>
+        <button type="button" data-session-list="mine" aria-pressed="false">Мои места</button>
+      </div>
+      <p id="group-session-message" class="panel availability-message" role="status" hidden></p>
+      <div class="group-sessions-board">
+        <div id="group-sessions-list" aria-label="Занятия"></div>
+        <div id="group-session-detail" tabindex="-1"></div>
       </div>
     </section>
     <section data-screen="mine" aria-labelledby="mine-title" hidden>
@@ -140,14 +300,45 @@
         <button type="button" data-agenda="upcoming" aria-pressed="true">Предстоящие</button>
         <button type="button" data-agenda="waiting" aria-pressed="false">Лист ожидания</button>
         <button type="button" data-agenda="history" aria-pressed="false">История</button>
+        <button type="button" id="agenda-seats">Мои места <span aria-hidden="true">↗</span></button>
       </div>
+      <div id="agenda-transfer" class="panel agenda-transfer" role="status" hidden></div>
       <div id="agenda-content" class="panel listing"></div>
     </section>
     <section data-screen="manage" aria-labelledby="manage-title" hidden>
+      <p id="google-calendar-feedback" class="panel google-calendar-feedback" role="status" hidden></p>
       <div class="page-heading">
         <div><h1 id="manage-title">Управление</h1><p class="intro">Каталог, обслуживание и журнал изменений.</p></div>
-        <button id="add-resource" type="button" class="page-action">Добавить ресурс <span aria-hidden="true">+</span></button>
+        <div class="integration-actions">
+          <a href="#branding" class="outline-action">Брендинг и письма ↗</a>
+          <a href="#integrations" class="outline-action">Интеграции ↗</a>
+          <button id="add-resource" type="button" class="page-action">Добавить ресурс <span aria-hidden="true">+</span></button>
+        </div>
       </div>
+      <section class="panel template-board" aria-labelledby="template-board-title">
+        <div class="section-heading">
+          <h2 id="template-board-title">Шаблоны ресурсов</h2>
+          <button id="add-resource-template" type="button" class="outline-action" disabled>Новый шаблон</button>
+        </div>
+        <div id="template-cards" class="template-cards"></div>
+      </section>
+      <details class="panel routing-settings">
+        <summary>Правила мастера подбора</summary>
+        <form id="routing-settings-form" class="workspace-form">
+          <div class="routing-settings-fields">
+            <label>Цель<select name="purpose" required></select></label>
+            <label>Тип ресурса<select name="type" required></select></label>
+            <label>Согласующий<select name="reviewerId"><option value="">По правилам ресурса</option></select></label>
+            <label>Обязательное оснащение<input name="equipment" maxlength="520" placeholder="Например, экран, видеосвязь"></label>
+          </div>
+          <p class="zone-caption">Назначенный сотрудник согласует заявки по этой цели. Администраторы организации тоже смогут принять решение.</p>
+          <div class="wizard-actions">
+            <button id="try-routing-rule" type="button" class="outline-action">Открыть в мастере ↗</button>
+            <button class="page-action" type="submit">Сохранить правило</button>
+          </div>
+          <p class="form-message" id="routing-rule-message" role="status" hidden></p>
+        </form>
+      </details>
       <div class="management-grid">
         <section class="panel listing" aria-labelledby="catalog-title">
           <div class="section-heading"><h2 id="catalog-title">Каталог ресурсов</h2>
@@ -157,12 +348,13 @@
         <section class="panel listing" aria-labelledby="service-title">
           <h2 id="service-title">Плановое обслуживание</h2>
           <form id="service-form" class="workspace-form">
-            <label>Ресурс<select name="resourceId" required></select></label>
+            <label>Ресурс<select name="resourceId" aria-label="Ресурс" required></select></label>
             <label>Дата<input name="date" type="date" required></label>
             <div class="form-pair">
-              <label>Первый слот<select name="fromHour" required></select></label>
-              <label>Последний слот<select name="throughHour" required></select></label>
+              <label>С<input name="fromTime" type="time" value="09:00" required></label>
+              <label><span id="service-end-caption">Последний старт</span><input name="throughTime" type="time" value="17:00" required></label>
             </div>
+            <p class="zone-caption" id="service-zone"></p>
             <label>Причина<input name="reason" maxlength="160" required placeholder="Например, замена оптики"></label>
             <button type="submit" class="page-action">Закрыть интервал</button>
             <p class="form-message" id="service-message" role="status" hidden></p>
@@ -172,6 +364,81 @@
       <section class="panel listing activity-panel" aria-labelledby="activity-title">
         <div class="section-heading"><h2 id="activity-title">Журнал изменений</h2><span>Последние 50 действий</span></div>
         <div id="activity-content"></div>
+      </section>
+    </section>
+    <section data-screen="integrations" aria-labelledby="integrations-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="integrations-title">Интеграции</h1><p class="intro">Подключите внешний сервис к ресурсам и событиям бронирования.</p></div>
+        <div class="integration-actions">
+          <a class="outline-action" href="#calendar-import">Импорт календаря</a>
+          <a class="outline-action" href="/openapi/v1.json" target="_blank" rel="noopener noreferrer">Схема OpenAPI ↗</a>
+        </div>
+      </div>
+      <p id="integration-notice" class="panel availability-message" role="status" hidden></p>
+      <div class="integration-grid">
+        <section class="panel listing" aria-labelledby="integration-keys-title">
+          <h2 id="integration-keys-title">API-ключи</h2>
+          <form id="integration-key-form" class="workspace-form">
+            <label>Название<input name="name" required maxlength="100" placeholder="Например, сайт коворкинга"></label>
+            <label>Доступ<select name="scope"><option value="read">Чтение</option><option value="write">Чтение и управление бронями API</option></select></label>
+            <button class="page-action" type="submit">Создать ключ</button>
+          </form>
+          <ul id="integration-keys" class="integration-list" aria-label="Активные API-ключи"></ul>
+        </section>
+        <section class="panel listing" aria-labelledby="integration-webhooks-title">
+          <h2 id="integration-webhooks-title">Вебхуки</h2>
+          <form id="integration-webhook-form" class="workspace-form">
+            <label>Название<input name="name" required maxlength="100" placeholder="Например, CRM"></label>
+            <label>Адрес получателя<input type="url" name="url" required maxlength="512" placeholder="https://example.com/webhooks/slotguard"></label>
+            <fieldset class="integration-event-list"><legend>События</legend><div class="filter-chips" id="integration-events"></div></fieldset>
+            <button class="page-action" type="submit">Добавить вебхук</button>
+          </form>
+          <ul id="integration-webhooks" class="integration-list" aria-label="Активные вебхуки"></ul>
+        </section>
+      </div>
+      <section class="panel listing integration-history" aria-labelledby="integration-history-title">
+        <div class="section-heading"><h2 id="integration-history-title">Доставка событий</h2>
+          <button type="button" id="refresh-integrations" class="outline-action">Обновить</button></div>
+        <div id="integration-deliveries"></div>
+      </section>
+    </section>
+    <section data-screen="calendar-import" aria-labelledby="calendar-import-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="calendar-import-title">Импорт календаря</h1><p class="intro">Перенесите занятые интервалы из файла .ics в расписание ресурса.</p></div>
+        <a href="#integrations" class="outline-action">К интеграциям</a>
+      </div>
+      <div class="calendar-import-grid">
+        <section class="panel listing">
+          <h2>Файл и ресурс</h2>
+          <form class="workspace-form" id="calendar-import-form">
+            <fieldset id="calendar-import-fields" disabled>
+              <label>Ресурс<select name="resourceId" required></select></label>
+              <label>Файл .ics<input type="file" name="file" accept=".ics,text/calendar" required></label>
+              <p class="calendar-import-hint">До 256 КБ и 250 событий. Время без часового пояса берётся из настроек ресурса.</p>
+              <div class="integration-actions">
+                <button type="submit" class="page-action">Предпросмотр</button>
+                <button type="button" class="outline-action" id="calendar-import-sample">Скачать пример</button>
+              </div>
+            </fieldset>
+          </form>
+          <p id="calendar-import-message" class="form-message" role="status" hidden></p>
+        </section>
+        <section class="panel listing">
+          <h2>Последние импорты</h2>
+          <ul id="calendar-import-history" class="integration-list"></ul>
+        </section>
+      </div>
+      <section class="panel listing calendar-import-results" id="calendar-import-results" aria-labelledby="calendar-import-results-title" hidden>
+        <div class="section-heading">
+          <div><h2 id="calendar-import-results-title">Предпросмотр</h2><p id="calendar-import-count" class="calendar-import-hint"></p></div>
+          <button class="page-action" type="button" id="calendar-import-commit">Импортировать</button>
+        </div>
+        <div class="integration-scroll">
+          <table class="integration-table">
+            <thead><tr><th scope="col">Событие</th><th scope="col">Интервал</th><th scope="col">Решение</th></tr></thead>
+            <tbody id="calendar-import-rows"></tbody>
+          </table>
+        </div>
       </section>
     </section>
     <section data-screen="approvals" aria-labelledby="approvals-title" hidden>
@@ -193,9 +460,79 @@
       <div id="approval-empty" class="panel approval-empty" hidden>
         <span class="symbol" aria-hidden="true">event_available</span>
         <h2>Заявок на согласование пока нет</h2>
-        <a class="text-link" href="#manage">Настроить согласование для ресурсов</a>
+        <a class="text-link" href="#manage" data-admin-approval-link>Настроить согласование для ресурсов</a>
       </div>
     </section>
+    <section data-screen="branding" aria-labelledby="branding-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="branding-title">Брендинг и письма</h1><p class="intro">Оформление гостевого бронирования и почта организации.</p></div>
+        <a href="#manage" class="outline-action">Вернуться в управление</a>
+      </div>
+      <div class="branding-layout">
+        <form class="workspace-form panel branding-form" id="branding-form">
+          <fieldset id="branding-fields" disabled>
+            <h2>Страница бронирования</h2>
+            <label>Название для гостей<input name="name" maxlength="80" placeholder="SlotGuard"></label>
+            <label>Логотип<input name="logoUrl" type="url" maxlength="512" placeholder="https://…"></label>
+            <label>Баннер<input name="bannerUrl" type="url" maxlength="512" placeholder="https://…"></label>
+            <label>Палитра<select name="palette">
+              <option value="forest">Лесная</option>
+              <option value="ocean">Океан</option>
+              <option value="plum">Слива</option>
+              <option value="graphite">Графит</option>
+            </select></label>
+            <div class="branding-divider"></div>
+            <h2>После подтверждения</h2>
+            <label>Подпись кнопки<input name="completionLabel" maxlength="60" placeholder="Перейти на сайт"></label>
+            <label>Адрес перехода<input name="completionUrl" type="url" maxlength="512" placeholder="https://…"></label>
+            <div class="branding-divider"></div>
+            <h2>Исходящие письма</h2>
+            <label>Имя отправителя<input name="senderName" maxlength="80"></label>
+            <label>Email для ответов<input name="replyTo" type="email" maxlength="254" autocomplete="off"></label>
+            <label>Почтовый профиль<select id="branding-smtp" name="smtpProfile"><option value="">По умолчанию</option></select></label>
+            <p class="branding-hint">Доступные профили настраиваются на сервере. Имя и адрес для ответов действуют и с общим SMTP.</p>
+            <button type="submit" class="page-action">Сохранить оформление</button>
+          </fieldset>
+          <p id="branding-message" class="form-message" role="status" hidden></p>
+        </form>
+        <section class="panel branding-preview booking-palette" id="branding-preview" aria-labelledby="branding-preview-title">
+          <h2 id="branding-preview-title">Предпросмотр</h2>
+          <div class="branding-example">
+            <div class="branding-example-brand">
+              <img id="branding-preview-logo" width="34" height="34" src="/design/slotguard-mark.svg" alt="" referrerpolicy="no-referrer">
+              <strong id="branding-preview-name">SlotGuard</strong>
+            </div>
+            <img id="branding-preview-banner" class="branding-example-banner" alt="" referrerpolicy="no-referrer" hidden>
+            <div class="branding-example-content">
+              <h3>Переговорная</h3>
+              <p>Выберите время бронирования</p>
+              <div class="branding-example-times"><span>10:00</span><span>11:00</span><span>12:00</span></div>
+              <span class="branding-example-action">Забронировать</span>
+              <p id="branding-preview-completion" hidden></p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+    <section data-screen="structure" aria-labelledby="structure-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="structure-title">Структура организации</h1><p class="intro">Подразделения, доступ к ресурсам и согласование заявок.</p></div>
+        <a href="#manage" class="outline-action">Журнал изменений</a>
+      </div>
+      <p id="structure-status" class="structure-status" role="status" hidden></p>
+      <div id="structure-content" class="structure-grid" aria-busy="true"></div>
+    </section>
+    <dialog id="structure-dialog" class="structure-dialog" aria-labelledby="structure-editor-title">
+      <form id="structure-form" class="workspace-form">
+        <h2 id="structure-editor-title"></h2>
+        <div id="structure-fields"></div>
+        <p id="structure-error" class="form-message error" role="alert" hidden></p>
+        <div class="structure-actions">
+          <button id="structure-cancel" class="outline-action" type="button">Отмена</button>
+          <button class="page-action" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </dialog>
     <section data-screen="team" aria-labelledby="team-title" hidden>
       <div class="page-heading">
         <div><h1 id="team-title">Команда</h1><p id="team-organization" class="intro"></p></div>
@@ -206,12 +543,14 @@
           <div id="team-members"></div>
         </section>
         <section class="panel listing invite-card">
-          <h2>Пригласить коллегу</h2>
-          <p>Ссылка действует 48 часов. Коллега войдёт с указанным email и получит роль участника.</p>
+          <h2>Пригласить коллег</h2>
+          <p>Добавьте до 20 адресов. Ссылки действуют 48 часов и дают роль участника.</p>
           <form class="workspace-form" id="team-invite-form">
-            <label>Email<input type="email" name="email" required maxlength="254" autocomplete="off" placeholder="name@example.com"></label>
-            <button class="page-action" type="submit">Отправить приглашение</button>
+            <label>Email, по одному на строку<textarea name="emails" rows="3" required maxlength="5100"
+              autocomplete="off" placeholder="name@example.com"></textarea></label>
+            <button class="page-action" type="submit">Отправить приглашения</button>
             <p class="form-message" id="team-message" role="status" hidden></p>
+            <ul id="team-invite-results" class="team-invite-results"></ul>
           </form>
         </section>
       </div>
@@ -220,55 +559,151 @@
         <div id="team-invitations"></div>
       </section>
     </section>
+    <section data-screen="p3" aria-labelledby="p3-title" hidden>
+      <div class="page-heading">
+        <div><h1 id="p3-title">Площадки и встречи</h1><p class="intro">Напишите запрос на бронь, откройте регистрацию или создайте комнату звонка.</p></div>
+        <div class="integration-actions">
+          <a class="outline-action" href="/discover">Публичный каталог ↗</a>
+          <a class="outline-action" href="/time-tools.html">Часовые пояса ↗</a>
+          <button class="outline-action" type="button" id="p3-install" hidden>Установить SlotGuard</button>
+        </div>
+      </div>
+      <div class="p3-grid">
+        <section class="panel p3-panel">
+          <h2>Помощник по бронированию</h2>
+          <form id="p3-assistant" class="workspace-form">
+            <label>Запрос<input name="text" required maxlength="240" placeholder="Переговорная на восемь человек завтра после обеда"></label>
+            <button class="page-action" type="submit">Найти время</button>
+          </form>
+          <p id="p3-answer-message" class="p3-muted" role="status"></p>
+          <ul id="p3-answer" class="p3-results"></ul>
+        </section>
+        <section class="panel p3-panel">
+          <h2>Комната звонка</h2><p>Войдите, чтобы создать комнату для двоих. Приглашение действует 24 часа.</p>
+          <div class="p3-line p3-divider">
+            <button class="page-action" id="p3-new-room" type="button">Создать комнату</button>
+            <a class="outline-action" id="p3-room-link" target="_blank" rel="noopener noreferrer" hidden>Открыть комнату ↗</a>
+            <button class="outline-action" id="p3-copy-room" type="button" hidden>Копировать ссылку</button>
+          </div>
+          <p id="p3-room-message" class="p3-muted" role="status"></p>
+        </section>
+        <section class="panel p3-panel" id="p3-event-panel" hidden>
+          <h2>Мероприятия</h2>
+          <p id="p3-events-empty" class="p3-muted" hidden>Создайте занятие в разделе <a class="text-link" href="#sessions">Занятия</a>.</p>
+          <form id="p3-event" class="workspace-form" hidden>
+            <label>Занятие<select name="session" aria-label="Занятие"></select></label>
+            <fieldset class="p3-form-fields" id="p3-event-fields">
+              <label class="checkbox-label"><input name="enabled" type="checkbox"> Публичная регистрация</label>
+              <label>Город<input name="city" maxlength="70"></label>
+              <label>Описание<textarea name="description" maxlength="1200" rows="3"></textarea></label>
+              <div class="form-pair">
+                <label>Регистрация с<input name="opensAt" type="datetime-local"></label>
+                <label>Регистрация до<input name="closesAt" type="datetime-local"></label>
+              </div>
+              <label>Соорганизатор<select name="coHostId" aria-label="Соорганизатор"></select></label>
+              <button type="submit" class="page-action">Сохранить публикацию</button>
+            </fieldset>
+            <a href="/discover" class="outline-action" id="p3-public-event" target="_blank" rel="noopener noreferrer" hidden>Открыть страницу ↗</a>
+          </form>
+          <p id="p3-event-message" class="p3-muted" role="status"></p>
+        </section>
+        <section class="panel p3-panel" id="p3-host-panel" hidden>
+          <h2>Гости мероприятия</h2>
+          <form id="p3-ticket" class="workspace-form">
+            <label>Код билета<input name="ticket" maxlength="36" required placeholder="Код под QR"></label>
+            <div class="p3-line">
+              <button type="submit" class="page-action">Отметить приход</button>
+              <button id="p3-scan" type="button" class="outline-action" hidden>Сканировать QR</button>
+            </div>
+            <video id="event-ticket-camera" autoplay playsinline muted hidden></video>
+          </form>
+          <form id="p3-announcement" class="workspace-form p3-divider">
+            <label>Сообщение подтверждённым гостям<textarea name="message" maxlength="600" rows="3" required></textarea></label>
+            <button type="submit" class="outline-action">Поставить письма в очередь</button>
+          </form>
+          <p id="p3-host-message" class="p3-muted" role="status"></p>
+        </section>
+      </div>
+    </section>
     <section data-screen="calendar" aria-labelledby="booking-title" hidden>
     <div class="calendar-lead">
-      <div class="calendar-lead-copy">
-        <h1 id="booking-title">Календарь</h1>
-        <p class="intro">Выберите ресурс и время бронирования.</p>
-        <div class="calendar-heading-actions">
-          <a href="#availability" class="outline-action"><span class="symbol" aria-hidden="true">search</span>Поиск по времени</a>
-          <span id="live-status" class="live-status" hidden></span>
-        </div>
-      </div>
-      <div class="week-scene" id="week-scene" hidden>
-        <div class="week-scene-copy">
-          <strong>Карта недели</strong>
-          <span id="week-scene-resource"></span>
-          <span id="week-scene-available"></span>
-          <button class="week-scene-toggle" id="week-scene-toggle" type="button" aria-pressed="false">Вид сверху</button>
-        </div>
-        <div class="week-scene-stage" id="week-scene-stage" aria-hidden="true">
-          <div class="week-scene-plane" id="week-scene-plane"></div>
-        </div>
+      <h1 id="booking-title">Календарь</h1>
+      <div class="calendar-heading-actions">
+        <span id="live-status" class="live-status" hidden></span>
+        <a href="#availability" class="outline-action"><span class="symbol" aria-hidden="true">search</span>Поиск по времени</a>
+        <button type="button" class="outline-action" id="calendar-check-time" disabled>Проверить время</button>
       </div>
     </div>
-    <section class="resources-section" aria-labelledby="resources-title">
-      <div class="section-heading">
-        <h2 id="resources-title">Ресурсы</h2>
-        <label class="calendar-search" id="calendar-search-wrap" hidden>
-          <span class="symbol" aria-hidden="true">search</span>
-          <input id="calendar-search" type="search" placeholder="Найти ресурс" aria-label="Поиск в календаре" autocomplete="off">
-        </label>
-      </div>
-      <div id="resources" class="resources"></div>
-    </section>
 
     <div class="workspace">
-      <section class="panel calendar" aria-labelledby="calendar-title">
+      <section class="panel calendar" aria-labelledby="week-label">
         <div class="calendar-header">
-          <div>
-            <h2 id="calendar-title">Расписание</h2>
-            <p id="week-label" class="week-label" aria-live="polite">Загрузка…</p>
+          <div class="calendar-resource">
+            <span class="resource-icon symbol" id="calendar-resource-icon" aria-hidden="true">meeting_room</span>
+            <div class="calendar-resource-copy">
+              <h2 id="calendar-resource-name">Ресурс</h2>
+              <p id="calendar-resource-location" hidden></p>
+            </div>
+            <details class="calendar-picker" id="calendar-picker">
+              <summary class="icon-button" id="calendar-picker-toggle" aria-label="Выбрать ресурс">
+                <span class="calendar-chevron" aria-hidden="true"></span>
+              </summary>
+              <div class="calendar-picker-panel">
+                <label class="calendar-search" id="calendar-search-wrap" hidden>
+                  <span class="symbol" aria-hidden="true">search</span>
+                  <input id="calendar-search" type="search" placeholder="Найти ресурс" aria-label="Найти ресурс" autocomplete="off">
+                </label>
+                <div id="resources" class="resources" role="group" aria-label="Ресурсы"></div>
+              </div>
+            </details>
           </div>
-          <div class="week-controls" aria-label="Переключение недель">
-            <button type="button" class="icon-button" id="prev" aria-label="Предыдущая неделя" disabled>‹</button>
-            <button type="button" class="icon-button today-button" id="today" disabled>Сегодня</button>
-            <button type="button" class="icon-button" id="next" aria-label="Следующая неделя" disabled>›</button>
+          <div class="calendar-view segment" role="group" aria-label="Вид календаря">
+            <button type="button" id="calendar-view-month" aria-pressed="false" aria-controls="calendar-month">Месяц</button>
+            <button type="button" id="calendar-view-week" aria-pressed="true" aria-controls="calendar-schedule">Неделя</button>
+            <button type="button" id="calendar-view-list" aria-pressed="false" aria-controls="calendar-list">Список</button>
+            <button type="button" id="calendar-view-map" aria-pressed="false" aria-controls="week-scene"><span class="symbol" aria-hidden="true">grid_view</span>3D-карта</button>
           </div>
         </div>
-        <div id="mobile-days" class="mobile-days" role="group" aria-label="День недели"></div>
-        <div class="calendar-scroll" tabindex="0" role="region" aria-label="Слоты по дням недели">
-          <div id="week" class="week"></div>
+        <div class="calendar-toolbar">
+          <p id="week-label" class="week-label" aria-live="polite">Загрузка…</p>
+          <div class="week-controls" role="group" aria-label="Период календаря">
+            <button type="button" class="icon-button" id="prev" aria-label="Предыдущая неделя" disabled><span class="calendar-chevron" aria-hidden="true"></span></button>
+            <button type="button" class="icon-button today-button" id="today" disabled>Сегодня</button>
+            <button type="button" class="icon-button" id="next" aria-label="Следующая неделя" disabled><span class="calendar-chevron" aria-hidden="true"></span></button>
+          </div>
+        </div>
+        <div class="duration-bar" id="calendar-duration-bar" hidden>
+          <label>Длительность<select id="calendar-duration" aria-label="Длительность брони"></select></label>
+          <span id="calendar-buffer" class="zone-caption"></span>
+        </div>
+        <p class="calendar-policy zone-caption" id="calendar-policy" hidden></p>
+        <div id="calendar-schedule">
+          <div id="mobile-days" class="mobile-days" role="group" aria-label="День недели"></div>
+          <div class="calendar-scroll" tabindex="0" role="region" aria-label="Слоты по дням недели">
+            <div id="week" class="week"></div>
+          </div>
+        </div>
+        <div id="calendar-month" hidden>
+          <div class="calendar-month-weekdays" aria-hidden="true">
+            <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+          </div>
+          <div id="calendar-month-days" class="calendar-month-days" role="group" aria-label="Даты месяца"></div>
+          <div class="calendar-month-meta">
+            <p id="calendar-month-status" role="status"></p>
+            <button id="calendar-month-retry" type="button" class="outline-action" hidden>Повторить</button>
+          </div>
+          <section id="calendar-month-slots" aria-labelledby="calendar-month-day-title"></section>
+        </div>
+        <div id="calendar-list" class="calendar-scroll calendar-list" tabindex="0" role="region" aria-label="Слоты недели списком" hidden></div>
+        <div class="week-scene" id="week-scene" hidden>
+          <div class="week-scene-copy">
+            <p id="week-scene-available"></p>
+            <p>Нажмите на ячейку, чтобы открыть слот.</p>
+            <button class="week-scene-toggle" id="week-scene-toggle" type="button" aria-pressed="false">Вид сверху</button>
+          </div>
+          <div class="week-scene-stage" id="week-scene-stage" aria-hidden="true">
+            <div class="week-scene-plane" id="week-scene-plane"></div>
+          </div>
         </div>
         <div class="calendar-footer">
           <ul class="legend" aria-label="Статусы слотов">
@@ -278,13 +713,23 @@
             <li><span class="dot held"></span>Резерв</li>
             <li><span class="dot pending"></span>На согласовании</li>
             <li><span class="dot maintenance"></span>Обслуживание</li>
+            <li id="external-calendar-legend" hidden><span class="dot external"></span>Внешний календарь</li>
+            <li id="group-session-legend" hidden><span class="dot group"></span>Занятие</li>
           </ul>
-          <span class="timezone">МСК · UTC+3</span>
+          <span class="timezone" id="calendar-zone"></span>
         </div>
       </section>
 
       <aside class="panel details" aria-labelledby="details-title">
         <h2 id="details-title">Выбранный слот</h2>
+        <div id="calendar-feedback" class="calendar-feedback" hidden>
+          <p id="calendar-feedback-message" role="status" tabindex="-1"></p>
+          <div id="calendar-feedback-options" hidden>
+            <h3>Ближайшие свободные слоты</h3>
+            <div id="calendar-feedback-list"></div>
+          </div>
+          <p id="calendar-feedback-note" class="calendar-feedback-note" hidden></p>
+        </div>
         <div id="details"></div>
         <details id="race-panel" class="race-panel" hidden>
           <summary>Демо конкурентного бронирования</summary>
@@ -299,6 +744,17 @@
   </main>
   </div>
   </div>
+  <dialog id="account-security-dialog" class="panel login-dialog account-security-dialog" aria-labelledby="account-security-title">
+    <div class="section-heading">
+      <h2 id="account-security-title">Двухфакторная защита</h2>
+      <button class="outline-action" id="account-security-close" type="button">Закрыть</button>
+    </div>
+    <form class="workspace-form" id="account-security-form">
+      <div id="account-security-fields"></div>
+      <p class="form-message" id="account-security-message" role="status" hidden></p>
+      <button class="page-action" type="submit" id="account-security-submit" hidden></button>
+    </form>
+  </dialog>
   <dialog id="account-dialog" class="panel login-dialog account-dialog" aria-labelledby="account-title">
     <form class="workspace-form" id="account-form">
       <div class="account-dialog-title">
@@ -343,9 +799,24 @@
       </div>
     </form>
   </dialog>
-  <dialog id="resource-dialog" class="panel login-dialog" aria-labelledby="resource-dialog-title">
+  <dialog id="pricing-dialog" class="panel login-dialog" aria-labelledby="pricing-title">
+    <h2 id="pricing-title">Цена бронирования</h2>
+    <p id="pricing-resource"></p>
+    <form id="pricing-form" class="workspace-form">
+      <label>Цена за бронь, ₽<input name="amount" type="number" min="1" max="1000000" step="0.01" placeholder="Бесплатно"></label>
+      <p class="form-message">Оставьте поле пустым для бесплатных броней. Демо-оплата доступна по ссылке на ресурс.</p>
+      <p id="pricing-error" class="form-message error" role="alert" hidden></p>
+      <div class="integration-actions">
+        <button class="outline-action" id="pricing-cancel" type="button">Отмена</button>
+        <button class="page-action" id="pricing-save" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="resource-dialog" class="panel login-dialog template-resource-dialog" aria-labelledby="resource-dialog-title">
     <form id="resource-form" class="workspace-form">
       <h2 id="resource-dialog-title">Новый ресурс</h2>
+      <label id="resource-template-field">Шаблон<select name="templateKey"><option value="">Без шаблона</option></select></label>
+      <p id="resource-template-hint" class="template-lock-note" hidden></p>
       <label>Название<input name="name" required maxlength="100" autocomplete="off"></label>
       <label>Расположение<input name="location" required maxlength="140" autocomplete="off"></label>
       <div class="form-pair">
@@ -364,6 +835,54 @@
       <div class="login-actions">
         <button type="submit" class="button primary">Сохранить</button>
         <button type="button" id="resource-cancel" class="button secondary">Отмена</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="schedule-dialog" class="panel login-dialog schedule-dialog" aria-labelledby="schedule-title">
+    <form id="schedule-form" class="workspace-form schedule-form" novalidate>
+      <header class="schedule-header">
+        <div class="schedule-heading">
+          <div class="schedule-glyph" aria-hidden="true"><span class="symbol">calendar_month</span></div>
+          <div><h2 id="schedule-title">График работы</h2><p id="schedule-resource" class="intro"></p></div>
+        </div>
+        <button id="schedule-close" type="button" class="icon-button schedule-icon-button" aria-label="Закрыть график">×</button>
+      </header>
+      <div id="schedule-toolbar" class="schedule-toolbar" hidden>
+        <div class="segment" role="group" aria-label="Раздел графика">
+          <button type="button" data-schedule-view="week" aria-pressed="true">Неделя</button>
+          <button type="button" data-schedule-view="exceptions" aria-pressed="false">Исключения</button>
+          <button type="button" data-schedule-view="booking" aria-pressed="false">Бронирование</button>
+          <button type="button" data-schedule-view="policy" aria-pressed="false">Правила</button>
+        </div>
+        <label class="schedule-zone" for="schedule-time-zone">Часовой пояс ресурса<select id="schedule-time-zone"></select></label>
+      </div>
+      <div id="schedule-body" class="schedule-body"></div>
+      <footer class="schedule-footer">
+        <p id="schedule-message" class="form-message error" role="alert" hidden></p>
+        <div class="schedule-actions">
+          <button id="schedule-cancel" type="button" class="outline-action">Отмена</button>
+          <button id="schedule-save" type="submit" class="page-action" disabled>Сохранить график</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="public-link-dialog" class="panel login-dialog" aria-labelledby="public-link-title">
+    <form id="public-link-form" class="workspace-form">
+      <h2 id="public-link-title">Публичная ссылка</h2>
+      <p id="public-link-resource" class="intro"></p>
+      <label class="check-field"><input name="enabled" type="checkbox"> Разрешить бронирование по ссылке</label>
+      <label>Фото ресурса<input name="photoUrl" type="url" maxlength="512" placeholder="https://…" autocomplete="off"></label>
+      <div id="public-link-result" class="public-link-result" hidden>
+        <label>Адрес для гостей<input id="public-link-url" type="url" readonly></label>
+        <div class="login-actions">
+          <button id="public-link-copy" type="button" class="outline-action">Копировать</button>
+          <a id="public-link-open" class="outline-action" target="_blank" rel="noopener noreferrer">Открыть страницу</a>
+        </div>
+      </div>
+      <p id="public-link-message" class="form-message" role="status" hidden></p>
+      <div class="login-actions">
+        <button type="submit" class="button primary">Сохранить</button>
+        <button id="public-link-close" type="button" class="button secondary">Закрыть</button>
       </div>
     </form>
   </dialog>

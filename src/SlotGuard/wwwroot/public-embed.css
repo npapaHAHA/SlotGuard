@@ -1,0 +1,32 @@
+.public-body.embed-mode { min-height: 0; background: #f8faf6; }
+.embed-mode .public-header, .embed-mode .public-media { display: none; }
+.embed-mode .public-width { width: min(790px, calc(100% - 18px)); }
+.embed-mode .public-main { padding-block: 9px; }
+.embed-mode .public-state { max-width: 100%; padding: 16px; }
+.embed-mode .public-state h1 { font-size: 22px; }
+.embed-mode .public-layout {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  border-radius: 13px;
+  box-shadow: none;
+}
+.embed-mode .public-resource { display: block; grid-column: 1 / -1; border-bottom: 1px solid #dfe8dc; }
+.embed-mode .public-resource-copy { padding: 11px 14px; }
+.embed-mode .public-resource h1 { margin-top: 3px; font-size: clamp(20px, 3vw, 26px); }
+.embed-mode .public-resource .public-meta { margin-top: 5px; font-size: 12px; }
+.embed-mode .public-resource .public-policy { margin-top: 6px; padding: 6px 8px; font-size: 12px; }
+.embed-mode .public-equipment { margin-top: 7px; }
+.embed-mode .public-equipment li { font-size: 11px; }
+.embed-mode .public-calendar, .embed-mode .public-time-panel { padding: 12px 14px; }
+.embed-mode .public-calendar { border-left: 0; }
+.embed-mode .public-calendar h2, .embed-mode .public-time-panel h2 { font-size: 18px; }
+.embed-mode .public-month-row { margin-block: 9px; }
+.embed-mode .public-day { min-height: 31px; aspect-ratio: auto; }
+.embed-mode .public-times.flexible-times { max-height: 12rem; }
+.public-embed-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px; padding: 8px 2px 0; font-size: 12px; }
+.public-embed-footer > span { display: flex; gap: 5px; align-items: center; font-weight: 720; }
+.public-embed-footer > a { color: var(--accent-dark); }
+@media (max-width: 600px) {
+  .embed-mode .public-layout { grid-template-columns: minmax(0, 1fr); }
+  .embed-mode .public-resource { padding: 0; }
+  .embed-mode .public-resource-copy { padding: 11px 14px; }
+}

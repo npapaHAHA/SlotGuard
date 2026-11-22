@@ -1,0 +1,11 @@
+.meeting-streams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.meeting-streams figure { margin: 0; position: relative; }
+.meeting-streams video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #152b24; border-radius: 12px; object-fit: cover; }
+.meeting-streams figcaption { position: absolute; bottom: 8px; left: 8px; color: #fff; background: #162a23d9; border-radius: 5px; padding: 3px 6px; font-size: 12px; }
+.meeting-controls, .meeting-details { margin-top: 14px; }
+.meeting-details textarea { width: 100%; min-width: 0; margin-bottom: 10px; }
+#meeting-status { min-height: 2em; }
+#meeting-messages { max-height: 250px; overflow: auto; }
+#meeting-caption { padding: 8px; min-height: 2em; }
+#meeting-mic[aria-pressed="false"], #meeting-camera[aria-pressed="false"] { text-decoration: line-through; }
+@media (max-width: 460px) { .meeting-streams figcaption { position: static; color: var(--ink); background: transparent; } }

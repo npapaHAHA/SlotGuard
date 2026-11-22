@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Часовые пояса · SlotGuard</title><link rel="manifest" href="/manifest.webmanifest">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/workspace.css"><link rel="stylesheet" href="/p3.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/time-zones.js" defer></script><script src="/time-tools.js" defer></script><script src="/pwa.js" defer></script>
+</head>
+<body class="p3-public">
+  <header class="p3-bar"><nav class="p3-width" aria-label="Навигация">
+    <a class="brand" href="/#p3"><img src="/design/slotguard-mark.svg" width="36" height="36" alt="">SlotGuard</a>
+    <div class="theme-header-actions">
+      <a class="outline-action" href="/#calendar">Календарь</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </nav></header>
+  <main class="p3-width p3-main">
+    <div class="p3-hero"><h1>Часовые пояса</h1><p>Сверьте дату и время встречи между двумя зонами.</p></div>
+    <form id="zone-convert" class="workspace-form panel p3-panel">
+      <div class="p3-grid">
+        <label>Исходная зона<select name="from" aria-label="Исходная зона"></select></label>
+        <label>Целевая зона<select name="to" aria-label="Целевая зона"></select></label>
+      </div>
+      <label>Дата и время в исходной зоне<input name="datetime" type="datetime-local" required></label>
+      <button class="page-action" type="submit">Перевести время</button>
+      <p id="zone-message" class="form-message" role="status" hidden></p>
+    </form>
+    <ul id="zone-results" class="p3-results" aria-live="polite"></ul>
+  </main>
+</body>
+</html>

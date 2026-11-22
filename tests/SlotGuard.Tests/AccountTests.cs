@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +14,13 @@ public sealed class AccountFixture : SlotGuardFixture
     internal const string Password = "SlotGuard!2026";
     internal TestMail Mail { get; } = new();
 
-    protected override void ConfigureServices(IServiceCollection services) =>
+    protected override void ConfigureServices(IServiceCollection services)
+    {
         services.AddSingleton<IWorkspaceMail>(Mail);
+        // SignalR compares session expiry against wall-clock time, while bookings use the fixture clock.
+        services.PostConfigure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme,
+            options => options.TimeProvider = TimeProvider.System);
+    }
 
     internal async Task CreateAccount(HttpClient client, string email)
     {
@@ -31,7 +37,8 @@ public sealed class AccountFixture : SlotGuardFixture
     {
         using var response = await client.PostAsJsonAsync("/api/account/login", new { email, password });
         response.EnsureSuccessStatusCode();
-        return response.Headers.GetValues("Set-Cookie").Single().Split(';')[0];
+        return response.Headers.GetValues("Set-Cookie")
+            .Single(cookie => cookie.StartsWith("SlotGuard.Session=", StringComparison.Ordinal)).Split(';')[0];
     }
 
     internal static async Task<OrganizationAccess> CreateOrganization(HttpClient client, string name)

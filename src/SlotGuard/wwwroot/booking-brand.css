@@ -1,0 +1,64 @@
+.booking-palette {
+  --brand-field: #edf2e9;
+  --brand-header: #f8faf4;
+  --brand-accent: #36664a;
+  --brand-strong: #244c36;
+  --brand-soft: #e8efe4;
+  --brand-selected: #ddf795;
+  --brand-border: #ceddce;
+}
+.booking-palette[data-palette="ocean"] {
+  --brand-field: #ecf3fd;
+  --brand-header: #f6f9ff;
+  --brand-accent: #235a9d;
+  --brand-strong: #163b72;
+  --brand-soft: #e7efff;
+  --brand-selected: #c4dcff;
+  --brand-border: #cbdaf0;
+}
+.booking-palette[data-palette="plum"] {
+  --brand-field: #f5edf6;
+  --brand-header: #fcf6fc;
+  --brand-accent: #79416f;
+  --brand-strong: #58294e;
+  --brand-soft: #f2e6f2;
+  --brand-selected: #efd5ea;
+  --brand-border: #e5cfe3;
+}
+.booking-palette[data-palette="graphite"] {
+  --brand-field: #eeeff1;
+  --brand-header: #f9fafb;
+  --brand-accent: #424954;
+  --brand-strong: #272e37;
+  --brand-soft: #ebedf2;
+  --brand-selected: #dce1e9;
+  --brand-border: #d6d9e0;
+}
+
+.public-body.booking-palette[data-palette] {
+  --accent: var(--brand-accent);
+  --accent-dark: var(--brand-strong);
+  background: var(--brand-field);
+}
+.booking-palette[data-palette] .public-header { background: var(--brand-header); border-color: var(--brand-border); }
+.booking-palette[data-palette] :is(.public-kind, .public-embed-footer a) { color: var(--brand-strong); }
+.booking-palette[data-palette] :is(.public-layout, .public-resource, .public-calendar, .public-time-panel) { border-color: var(--brand-border); }
+.booking-palette[data-palette] :is(.public-day:not(:disabled), .public-equipment li, .public-receipt-icon) { background: var(--brand-soft); }
+.booking-palette[data-palette] :is(.public-day, .public-time)[aria-pressed="true"] {
+  background: var(--brand-selected);
+  border-color: var(--brand-accent);
+  color: var(--brand-strong);
+}
+.public-header .brand, .public-embed-footer > span { overflow-wrap: anywhere; min-width: 0; }
+.public-header .brand-icon, .public-embed-footer img { object-fit: contain; flex-shrink: 0; }
+.public-brand-banner {
+  display: block;
+  width: 100%;
+  height: clamp(88px, 15vw, 170px);
+  border: 1px solid var(--brand-border);
+  border-radius: 17px;
+  object-fit: cover;
+  margin-bottom: 17px;
+}
+.public-body.embed-mode .public-brand-banner { display: none; }
+#public-completion { justify-self: start; text-align: center; max-width: 100%; overflow-wrap: anywhere; }

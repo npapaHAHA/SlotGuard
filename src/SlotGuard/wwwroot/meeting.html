@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+  <title>Комната звонка · SlotGuard</title><link rel="icon" href="/design/slotguard-mark.svg">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/workspace.css"><link rel="stylesheet" href="/p3.css">
+  <link rel="stylesheet" href="/meeting.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/vendor/signalr/signalr.min.js" defer></script><script src="/meeting.js" defer></script>
+</head>
+<body class="p3-public">
+  <header class="p3-bar"><nav class="p3-width" aria-label="Навигация">
+    <a class="brand" href="/#p3"><img src="/design/slotguard-mark.svg" width="36" height="36" alt="">SlotGuard</a>
+    <div class="theme-header-actions">
+      <button type="button" id="meeting-copy" class="outline-action">Скопировать приглашение</button>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </nav></header>
+  <main class="p3-width p3-main">
+    <div class="p3-hero"><h1>Комната звонка</h1><p>Видео и звук для двоих, чат и заметки.</p></div>
+    <p id="meeting-status" class="p3-muted" role="status"></p>
+    <section class="panel p3-panel">
+      <form id="meeting-join" class="workspace-form">
+        <label>Имя<input name="displayName" maxlength="50" required autocomplete="name"></label>
+        <label class="checkbox-label"><input name="audioOnly" type="checkbox"> Только звук</label>
+        <button class="page-action" type="submit">Подключиться</button>
+      </form>
+      <div id="meeting-video" hidden>
+        <div class="meeting-streams">
+          <figure><video id="meeting-local" autoplay muted playsinline></video><figcaption>Вы</figcaption></figure>
+          <figure><video id="meeting-remote" autoplay playsinline></video><figcaption>Собеседник</figcaption></figure>
+        </div>
+        <p id="meeting-caption" class="p3-muted" aria-live="polite" hidden></p>
+        <div class="p3-line meeting-controls">
+          <button id="meeting-mic" class="outline-action" type="button" aria-pressed="true">Микрофон</button>
+          <button id="meeting-camera" class="outline-action" type="button" aria-pressed="true">Камера</button>
+          <button id="meeting-record" class="outline-action" type="button">Записать мою дорожку</button>
+          <button id="meeting-dictation" class="outline-action" type="button">Диктовать заметки</button>
+          <button id="meeting-leave" class="page-action" type="button">Выйти из комнаты</button>
+        </div>
+      </div>
+    </section>
+    <div class="p3-grid meeting-details">
+      <section class="panel p3-panel"><h2>Чат</h2>
+        <ol id="meeting-messages" class="p3-results" aria-live="polite"></ol>
+        <form id="meeting-chat" class="workspace-form">
+          <label>Сообщение<input name="text" maxlength="600" required></label>
+          <button class="outline-action" type="submit" disabled>Отправить</button>
+        </form>
+      </section>
+      <section class="panel p3-panel"><h2>Мои заметки</h2>
+        <label class="workspace-form"><span>Текст встречи</span><textarea id="meeting-notes" rows="7" maxlength="40000"></textarea></label>
+        <button id="meeting-save-notes" class="outline-action" type="button">Скачать заметки</button>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Площадки и мероприятия · SlotGuard</title>
+  <script src="/theme.js"></script>
+  <link rel="icon" href="/design/slotguard-mark.svg">
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/workspace.css"><link rel="stylesheet" href="/p3.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/time-zones.js" defer></script><script src="/booking-payments.js" defer></script><script src="/discover.js" defer></script>
+</head>
+<body class="p3-public">
+  <header class="p3-bar"><nav class="p3-width" aria-label="Навигация">
+    <a class="brand" href="/"><img src="/design/slotguard-mark.svg" width="36" height="36" alt="">SlotGuard</a>
+    <div class="theme-header-actions">
+      <a href="/" class="outline-action">Рабочее пространство</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </nav></header>
+  <main class="p3-width p3-main">
+    <section class="p3-hero"><h1>Площадки и мероприятия</h1><p>Найдите место для встречи, студию для записи или событие в своём городе.</p></section>
+    <form class="panel workspace-form p3-panel" id="discover-search">
+      <div class="p3-grid">
+        <label>Город<input name="city" maxlength="70" placeholder="Например, Санкт-Петербург"></label>
+        <label>Поиск<input name="text" maxlength="120" placeholder="Площадка, мероприятие или организация"></label>
+      </div>
+      <div class="p3-line">
+        <label>Показывать<select name="kind"><option value="">Все</option><option value="venues">Площадки</option><option value="events">Мероприятия</option></select></label>
+        <button type="submit" class="page-action">Найти</button>
+      </div>
+    </form>
+    <p class="p3-muted" id="discover-status" role="status"></p>
+    <div id="discover-results" class="p3-directory"></div>
+  </main>
+</body>
+</html>

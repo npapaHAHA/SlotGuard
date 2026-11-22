@@ -1,0 +1,36 @@
+.manage-main { max-width: 600px; }
+.manage-card {
+  overflow: hidden;
+  border: 1px solid #d5e1d4;
+  border-radius: 23px;
+  background: var(--public-paper);
+  box-shadow: 0 24px 50px -36px #223a2b75;
+}
+.manage-header {
+  padding: clamp(26px, 6vw, 42px);
+  background: radial-gradient(ellipse at top right, #3b5b49, transparent 75%), #213b30;
+  color: #eef4e9;
+}
+.manage-header h1 { margin: 13px 0 6px; font-size: clamp(25px, 6vw, 39px); line-height: 1.1; letter-spacing: -.04em; }
+.manage-header p { color: #d5e2d7; overflow-wrap: anywhere; }
+.manage-status {
+  display: inline-block; padding: 4px 10px; border-radius: 99px;
+  background: #dbedbe; color: #22372a; font-size: 12px; font-weight: 700;
+}
+.manage-status[data-state="pending"] { background: #ffecbc; color: #603e06; }
+.manage-status[data-state="cancelled"], .manage-status[data-state="rejected"], .manage-status[data-state="expired"] {
+  background: #eedbd6; color: #5c3028;
+}
+.manage-details { padding: clamp(20px, 6vw, 36px); display: grid; gap: 14px; }
+.manage-time {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border: 1px solid #dfe8da; border-radius: 12px; background: #f0f5ec;
+}
+.manage-time .symbol { color: #375c41; font-size: 25px; }
+.manage-details p { font-size: 14px; color: var(--subtle); line-height: 1.45; }
+.manage-details #manage-message.error { color: #8e2e28; }
+.manage-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.manage-actions .manage-cancel { color: #8e2e28; }
+@media (max-width: 480px) {
+  .manage-actions > button { width: 100%; }
+}

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef3ec">
+  <meta name="description" content="Интерактивная демонстрация SlotGuard. Выберите время на 3D-карте недели и проверьте, как решается конфликт бронирования.">
+  <title>SlotGuard — интерактивное демо</title>
+  <link rel="icon" href="/design/slotguard-mark.svg" type="image/svg+xml">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/week-map.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/demo/landing.css">
+  <script src="/motion.js" defer></script>
+  <script src="/week-map.js" defer></script>
+  <script src="/demo/landing.js" defer></script>
+</head>
+<body class="landing">
+  <a class="skip-link" href="#interview-demo">К демонстрации</a>
+  <header class="landing-header">
+    <div class="landing-width landing-header-inner">
+      <a class="landing-brand" href="/demo/"><img src="/design/slotguard-mark.svg" width="35" height="35" alt="">SlotGuard</a>
+      <nav class="landing-nav" aria-label="Демонстрация">
+        <a href="#interview-demo">Сценарий</a>
+        <a href="#architecture">Архитектура</a>
+      </nav>
+      <div class="landing-header-actions">
+        <a class="landing-workspace" href="/#calendar">Календарь <span aria-hidden="true">↗</span></a>
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="landing-width">
+    <section class="landing-hero" aria-labelledby="landing-title">
+      <h1 id="landing-title">Бронирование<br>общих ресурсов</h1>
+      <div class="landing-hero-copy">
+        <p>Выберите время на 3D-карте и проверьте, что происходит, когда два человека бронируют один слот.</p>
+        <a href="#interview-demo" class="page-action">Попробовать сценарий <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+
+    <section id="interview-demo" class="landing-demo" aria-labelledby="interview-demo-title">
+      <div class="landing-demo-header">
+        <div class="landing-resource">
+          <span class="landing-resource-icon symbol" aria-hidden="true">meeting_room</span>
+          <div>
+            <h2 id="interview-demo-title">Зал «Север»</h2>
+            <p>Переговорная · до 8 человек</p>
+          </div>
+        </div>
+        <div class="landing-demo-actions">
+          <span class="landing-simulation">Симуляция · учебные данные</span>
+          <button type="button" id="demo-reset" class="outline-action">Сбросить</button>
+        </div>
+      </div>
+
+      <div class="landing-playground">
+        <section class="landing-map" aria-labelledby="landing-map-title">
+          <div class="landing-map-header">
+            <div>
+              <h3 id="landing-map-title">Карта недели</h3>
+              <p id="demo-map-count"></p>
+            </div>
+            <button id="demo-map-flat" type="button" aria-pressed="false" aria-controls="demo-stage">Вид сверху</button>
+          </div>
+          <div id="demo-stage" class="week-scene-stage">
+            <div id="demo-plane" class="week-scene-plane" role="group" aria-label="Слоты на карте" aria-describedby="demo-map-help"></div>
+          </div>
+          <p id="demo-map-help" class="sr-only">Стрелки перемещают фокус между ячейками. Enter выбирает слот.</p>
+          <ul class="landing-legend" aria-label="Статусы на карте">
+            <li><span data-status="available"></span>Свободно</li>
+            <li><span data-status="booked"></span>Занято</li>
+            <li><span data-status="held"></span>Резерв</li>
+            <li><span data-status="maintenance"></span>Обслуживание</li>
+            <li><span data-status="mine"></span>Ваша бронь</li>
+          </ul>
+        </section>
+
+        <section class="landing-controls" aria-labelledby="landing-controls-title">
+          <h3 id="landing-controls-title">Выберите время</h3>
+          <p class="landing-week-range" id="demo-week-range"></p>
+          <div id="demo-days" class="landing-days" role="group" aria-label="Дни недели"></div>
+          <div id="demo-times" class="landing-times" role="group" aria-label="Слоты выбранного дня"></div>
+          <div class="landing-selection">
+            <div class="landing-selection-time"><span id="demo-date"></span><strong id="demo-time"></strong></div>
+            <span id="demo-status" class="landing-status"></span>
+          </div>
+          <div class="landing-booking-actions">
+            <button id="demo-book" class="page-action" type="button">Забронировать</button>
+            <button id="demo-race" class="outline-action" type="button">Сымитировать гонку</button>
+          </div>
+          <div id="demo-feedback" class="landing-feedback" hidden>
+            <div class="landing-feedback-message" role="status">
+              <strong id="demo-feedback-title" tabindex="-1"></strong>
+              <p id="demo-feedback-text"></p>
+            </div>
+            <div id="demo-alternatives" hidden>
+              <h4>Ближайшее свободное время</h4>
+              <div id="demo-alternative-list" class="landing-alternatives"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <noscript><p class="landing-no-script">Включите JavaScript, чтобы выбрать слот и пройти сценарий.</p></noscript>
+    </section>
+
+    <section id="architecture" class="landing-architecture" aria-labelledby="architecture-title">
+      <div class="landing-architecture-header">
+        <h2 id="architecture-title">Как это работает в SlotGuard</h2>
+        <a href="/#calendar" class="outline-action">Открыть рабочий календарь <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="landing-architecture-grid">
+        <article>
+          <span class="landing-tech">ASP.NET Core · PostgreSQL</span>
+          <h3>Один интервал, одна бронь</h3>
+          <p>Ограничение PostgreSQL запрещает пересечение активных интервалов одного ресурса. В рабочем календаре можно отправить 20 одновременных запросов и увидеть ответы сервера.</p>
+        </article>
+        <article>
+          <span class="landing-tech">SignalR</span>
+          <h3>Слот обновляется у всех</h3>
+          <p>После изменения календаря сервер уведомляет открытые вкладки организации. Участники видят актуальную доступность на той же неделе.</p>
+        </article>
+        <article>
+          <span class="landing-tech">RabbitMQ · Transactional Outbox</span>
+          <h3>Резерв для следующего в очереди</h3>
+          <p>Когда время освобождается, следующий участник получает резерв на 10 минут. Событие уведомления сохраняется вместе с резервом и отправляется с повтором при сбое.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+  <footer class="landing-width landing-footer">
+    <a class="landing-brand" href="/demo/"><img src="/design/slotguard-mark.svg" width="24" height="24" alt="">SlotGuard</a>
+    <a href="https://github.com/npapaHAHA/SlotGuard">Исходный код на GitHub <span aria-hidden="true">↗</span></a>
+  </footer>
+</body>
+</html>

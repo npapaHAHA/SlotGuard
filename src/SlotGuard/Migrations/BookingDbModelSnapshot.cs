@@ -177,6 +177,15 @@ namespace SlotGuard.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.PrimitiveCollection<string[]>("FactorRecoveryHashes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValue(new string[0]);
+
+                    b.Property<long?>("LastAuthenticatorStep")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -194,11 +203,17 @@ namespace SlotGuard.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("PendingFactorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ProtectedAuthenticatorKey")
+                        .HasColumnType("text");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
@@ -228,6 +243,9 @@ namespace SlotGuard.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AnswersJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("ApprovalReason")
                         .HasMaxLength(240)
                         .HasColumnType("character varying(240)");
@@ -236,8 +254,34 @@ namespace SlotGuard.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<Guid?>("BundleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CalendarImportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CalendarRootId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CalendarSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTimeOffset?>("CancelledAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTimeOffset>("EndUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("GuestManagement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("HoldExpiresAt")
                         .HasColumnType("timestamp with time zone");
@@ -246,20 +290,81 @@ namespace SlotGuard.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<DateTimeOffset>("OccupiedFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OccupiedUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("PaymentRefundedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PriceMinor")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PrivateLinkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RescheduledFromId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ResourceId")
                         .IsRequired()
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("RoutingContext")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("RoutingReviewerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("SeatApprovalRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<int?>("SeatCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SeriesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SessionTitle")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTimeOffset>("StartUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BundleId")
+                        .HasFilter("\"BundleId\" IS NOT NULL");
+
+                    b.HasIndex("CalendarImportId");
+
+                    b.HasIndex("CalendarRootId");
+
+                    b.HasIndex("EndUtc")
+                        .HasFilter("\"SeatCapacity\" IS NOT NULL");
+
                     b.HasIndex("HoldExpiresAt")
                         .HasFilter("\"CancelledAt\" IS NULL AND \"HoldExpiresAt\" IS NOT NULL");
+
+                    b.HasIndex("PrivateLinkId");
+
+                    b.HasIndex("RescheduledFromId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_bookings_rescheduled_from");
+
+                    b.HasIndex("RoutingReviewerId")
+                        .HasFilter("\"RoutingReviewerId\" IS NOT NULL AND \"CancelledAt\" IS NULL AND \"ApprovalStatus\" = 'pending'");
 
                     b.HasIndex("StartUtc")
                         .HasFilter("\"ApprovalStatus\" = 'pending' AND \"CancelledAt\" IS NULL");
@@ -269,7 +374,231 @@ namespace SlotGuard.Migrations
                         .HasDatabaseName("ux_bookings_active_slot")
                         .HasFilter("\"CancelledAt\" IS NULL");
 
-                    b.ToTable("Bookings");
+                    b.HasIndex("ResourceId", "OwnerId", "SeriesId")
+                        .HasFilter("\"SeriesId\" IS NOT NULL");
+
+                    b.ToTable("Bookings", t =>
+                        {
+                            t.HasCheckConstraint("ck_bookings_payment", "(\"PriceMinor\" IS NULL AND \"PaidAt\" IS NULL AND \"PaymentRefundedAt\" IS NULL)\nOR (\"PriceMinor\" IS NOT NULL AND \"PriceMinor\" BETWEEN 100 AND 100000000\n    AND (\"PaidAt\" IS NOT NULL OR \"HoldExpiresAt\" IS NOT NULL)\n    AND (\"PaymentRefundedAt\" IS NULL OR (\"PaidAt\" IS NOT NULL AND \"CancelledAt\" IS NOT NULL)))");
+                        });
+                });
+
+            modelBuilder.Entity("SlotGuard.BookingEmail", b =>
+                {
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("BookingId", "Kind");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasFilter("\"CompletedAt\" IS NULL");
+
+                    b.ToTable("BookingEmails");
+                });
+
+            modelBuilder.Entity("SlotGuard.BookingRouteRule", b =>
+                {
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.PrimitiveCollection<string[]>("Equipment")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("OrganizationId", "Purpose");
+
+                    b.HasIndex("ReviewerId");
+
+                    b.ToTable("BookingRouteRules");
+                });
+
+            modelBuilder.Entity("SlotGuard.CalendarImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Revision")
+                        .IsRequired()
+                        .HasMaxLength(97)
+                        .HasColumnType("character varying(97)");
+
+                    b.Property<int>("Skipped")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResourceId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("CalendarImports");
+                });
+
+            modelBuilder.Entity("SlotGuard.EventMail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SeatId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasFilter("\"CompletedAt\" IS NULL");
+
+                    b.HasIndex("SeatId");
+
+                    b.ToTable("EventMails");
+                });
+
+            modelBuilder.Entity("SlotGuard.ExternalApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CanWrite")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("ExternalApiKeys");
+                });
+
+            modelBuilder.Entity("SlotGuard.GoogleCalendarLink", b =>
+                {
+                    b.Property<string>("ResourceId")
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("BusyJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CalendarId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ExportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ImportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Key")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("NextSyncAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProtectedRefreshToken")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("Revision")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("ResourceId");
+
+                    b.HasIndex("CalendarId")
+                        .IsUnique()
+                        .HasFilter("\"ProtectedRefreshToken\" IS NOT NULL");
+
+                    b.ToTable("GoogleCalendars");
                 });
 
             modelBuilder.Entity("SlotGuard.HoldNotification", b =>
@@ -351,6 +680,53 @@ namespace SlotGuard.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SlotGuard.OrganizationBranding", b =>
+                {
+                    b.Property<string>("OrganizationId")
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("BannerUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("CompletionLabel")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("CompletionUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Palette")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ReplyTo")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("SenderName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("SmtpProfile")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("OrganizationId");
+
+                    b.ToTable("Branding");
+                });
+
             modelBuilder.Entity("SlotGuard.OrganizationInvitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -400,9 +776,12 @@ namespace SlotGuard.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("OwnerId", "OrganizationId");
 
-                    b.HasIndex("OrganizationId");
+                    b.HasIndex("OrganizationId", "UnitId");
 
                     b.ToTable("Memberships");
 
@@ -427,20 +806,136 @@ namespace SlotGuard.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SlotGuard.OrganizationUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "BranchId");
+
+                    b.ToTable("OrganizationUnits");
+                });
+
+            modelBuilder.Entity("SlotGuard.PrivateBookingLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmailDomain")
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResourceId");
+
+                    b.ToTable("PrivateBookingLinks", t =>
+                        {
+                            t.HasCheckConstraint("ck_private_booking_links_usage", "\"MaxUses\" BETWEEN 1 AND 1000 AND \"UsedCount\" BETWEEN 0 AND \"MaxUses\"");
+                        });
+                });
+
+            modelBuilder.Entity("SlotGuard.PublishedEvent", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
+
+                    b.Property<DateTimeOffset?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CoHostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1200)
+                        .HasColumnType("character varying(1200)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SessionId");
+
+                    b.ToTable("PublishedEvents");
+                });
+
             modelBuilder.Entity("SlotGuard.Resource", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("BookingFormDefinition")
+                        .HasColumnType("jsonb");
+
                     b.Property<int?>("Capacity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DiscoverCity")
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
+
+                    b.Property<bool>("DiscoverFeatured")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.PrimitiveCollection<string[]>("EmbedOrigins")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValue(new string[0]);
 
                     b.PrimitiveCollection<string[]>("Equipment")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text[]")
                         .HasDefaultValue(new string[0]);
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
@@ -457,11 +952,27 @@ namespace SlotGuard.Migrations
                         .IsRequired()
                         .HasColumnType("character varying(32)");
 
+                    b.Property<int?>("PriceMinor")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PublicLinkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublicPhotoUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<bool>("RequiresApproval")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ScheduleDefinition")
+                        .HasColumnType("jsonb");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -472,15 +983,25 @@ namespace SlotGuard.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrganizationId");
+                    b.HasIndex("PublicLinkId")
+                        .IsUnique();
 
-                    b.ToTable("Resources");
+                    b.HasIndex("OrganizationId", "GroupId");
+
+                    b.HasIndex("OrganizationId", "TemplateId");
+
+                    b.ToTable("Resources", t =>
+                        {
+                            t.HasCheckConstraint("ck_resources_price", "\"PriceMinor\" BETWEEN 100 AND 100000000");
+                        });
 
                     b.HasData(
                         new
                         {
                             Id = "microscope",
                             Capacity = 2,
+                            DiscoverFeatured = false,
+                            EmbedOrigins = new string[0],
                             Equipment = new[] { "камера" },
                             IsArchived = false,
                             Location = "Лаборатория А · кабинет 204",
@@ -494,6 +1015,8 @@ namespace SlotGuard.Migrations
                         {
                             Id = "electronics",
                             Capacity = 1,
+                            DiscoverFeatured = false,
+                            EmbedOrigins = new string[0],
                             Equipment = new[] { "вытяжка", "термофен" },
                             IsArchived = false,
                             Location = "Мастерская · кабинет 108",
@@ -507,6 +1030,8 @@ namespace SlotGuard.Migrations
                         {
                             Id = "studio",
                             Capacity = 4,
+                            DiscoverFeatured = false,
+                            EmbedOrigins = new string[0],
                             Equipment = new[] { "аудиоинтерфейс", "микрофон" },
                             IsArchived = false,
                             Location = "Медиалаб · кабинет 312",
@@ -520,6 +1045,8 @@ namespace SlotGuard.Migrations
                         {
                             Id = "meeting-room",
                             Capacity = 8,
+                            DiscoverFeatured = false,
+                            EmbedOrigins = new string[0],
                             Equipment = new[] { "видеосвязь", "доска", "экран" },
                             IsArchived = false,
                             Location = "Коворкинг · кабинет 403",
@@ -533,6 +1060,8 @@ namespace SlotGuard.Migrations
                         {
                             Id = "podcast-room",
                             Capacity = 4,
+                            DiscoverFeatured = false,
+                            EmbedOrigins = new string[0],
                             Equipment = new[] { "аудиоинтерфейс", "микрофон" },
                             IsArchived = false,
                             Location = "Коворкинг · кабинет 405",
@@ -544,6 +1073,132 @@ namespace SlotGuard.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SlotGuard.ResourceGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "UnitId");
+
+                    b.HasIndex("ReviewerId", "OrganizationId");
+
+                    b.ToTable("ResourceGroups");
+                });
+
+            modelBuilder.Entity("SlotGuard.ResourceTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("Revision")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ux_resource_templates_org_name");
+
+                    b.ToTable("ResourceTemplates");
+                });
+
+            modelBuilder.Entity("SlotGuard.SeatReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnswersJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Attendance")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("AttendanceAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionReason")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<string>("GuestEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("GuestName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("WasApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CreatedAt");
+
+                    b.HasIndex("SessionId", "OwnerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_group_seats_active_owner")
+                        .HasFilter("\"Status\" IN ('pending', 'confirmed', 'waiting')");
+
+                    b.ToTable("SeatReservations");
+                });
+
             modelBuilder.Entity("SlotGuard.WaitlistEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -551,6 +1206,14 @@ namespace SlotGuard.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DurationMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60);
+
+                    b.Property<Guid?>("OfferedBookingId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
@@ -567,14 +1230,116 @@ namespace SlotGuard.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OfferedBookingId")
+                        .IsUnique();
+
                     b.HasIndex("ResourceId", "StartUtc", "Id")
                         .HasFilter("\"RemovedAt\" IS NULL");
 
-                    b.HasIndex("ResourceId", "StartUtc", "OwnerId")
+                    b.HasIndex("ResourceId", "StartUtc", "OwnerId", "DurationMinutes")
                         .IsUnique()
+                        .HasDatabaseName("ux_waitlist_active_request")
                         .HasFilter("\"RemovedAt\" IS NULL");
 
                     b.ToTable("WaitlistEntries");
+                });
+
+            modelBuilder.Entity("SlotGuard.WebhookDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int?>("LastStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("Lease")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasFilter("\"DeliveredAt\" IS NULL AND \"FailedAt\" IS NULL");
+
+                    b.HasIndex("SubscriptionId", "CreatedAt");
+
+                    b.ToTable("WebhookDeliveries");
+                });
+
+            modelBuilder.Entity("SlotGuard.WebhookSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<string[]>("Events")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ProtectedSecret")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("WebhookSubscriptions");
                 });
 
             modelBuilder.Entity("SlotGuard.WorkspaceActivity", b =>
@@ -672,10 +1437,79 @@ namespace SlotGuard.Migrations
 
             modelBuilder.Entity("SlotGuard.Booking", b =>
                 {
+                    b.HasOne("SlotGuard.CalendarImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("CalendarImportId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SlotGuard.PrivateBookingLink", null)
+                        .WithMany()
+                        .HasForeignKey("PrivateLinkId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SlotGuard.Booking", null)
+                        .WithOne()
+                        .HasForeignKey("SlotGuard.Booking", "RescheduledFromId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SlotGuard.Resource", null)
                         .WithMany()
                         .HasForeignKey("ResourceId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.BookingEmail", b =>
+                {
+                    b.HasOne("SlotGuard.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.BookingRouteRule", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.CalendarImportBatch", b =>
+                {
+                    b.HasOne("SlotGuard.Resource", null)
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.EventMail", b =>
+                {
+                    b.HasOne("SlotGuard.SeatReservation", null)
+                        .WithMany()
+                        .HasForeignKey("SeatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.ExternalApiKey", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.GoogleCalendarLink", b =>
+                {
+                    b.HasOne("SlotGuard.Resource", null)
+                        .WithOne()
+                        .HasForeignKey("SlotGuard.GoogleCalendarLink", "ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -697,6 +1531,15 @@ namespace SlotGuard.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SlotGuard.OrganizationBranding", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithOne()
+                        .HasForeignKey("SlotGuard.OrganizationBranding", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SlotGuard.OrganizationInvitation", b =>
                 {
                     b.HasOne("SlotGuard.Organization", null)
@@ -713,6 +1556,45 @@ namespace SlotGuard.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SlotGuard.OrganizationUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "UnitId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("SlotGuard.OrganizationUnit", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SlotGuard.OrganizationUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "BranchId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("SlotGuard.PrivateBookingLink", b =>
+                {
+                    b.HasOne("SlotGuard.Resource", null)
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.PublishedEvent", b =>
+                {
+                    b.HasOne("SlotGuard.Booking", null)
+                        .WithOne()
+                        .HasForeignKey("SlotGuard.PublishedEvent", "SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SlotGuard.Resource", b =>
@@ -722,14 +1604,87 @@ namespace SlotGuard.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("SlotGuard.ResourceGroup", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "GroupId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SlotGuard.ResourceTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "TemplateId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("SlotGuard.ResourceGroup", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SlotGuard.OrganizationUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "UnitId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SlotGuard.OrganizationMembership", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewerId", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("SlotGuard.ResourceTemplate", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.SeatReservation", b =>
+                {
+                    b.HasOne("SlotGuard.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SlotGuard.WaitlistEntry", b =>
                 {
+                    b.HasOne("SlotGuard.Booking", null)
+                        .WithOne()
+                        .HasForeignKey("SlotGuard.WaitlistEntry", "OfferedBookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SlotGuard.Resource", null)
                         .WithMany()
                         .HasForeignKey("ResourceId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.WebhookDelivery", b =>
+                {
+                    b.HasOne("SlotGuard.WebhookSubscription", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SlotGuard.WebhookSubscription", b =>
+                {
+                    b.HasOne("SlotGuard.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

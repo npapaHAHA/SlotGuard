@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Мероприятие · SlotGuard</title>
+  <script src="/theme.js"></script>
+  <link rel="icon" href="/design/slotguard-mark.svg">
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/p3.css"><link rel="stylesheet" href="/booking-questions.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/time-zones.js" defer></script><script src="/booking-questions.js" defer></script>
+  <script src="/vendor/qrcode/qrcode.js" defer></script><script src="/event.js" defer></script>
+</head>
+<body class="p3-public">
+  <header class="p3-bar"><nav class="p3-width" aria-label="Навигация">
+    <a class="brand" href="/"><img src="/design/slotguard-mark.svg" width="36" height="36" alt="">SlotGuard</a>
+    <div class="theme-header-actions">
+      <a class="outline-action" href="/discover">Все мероприятия</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </nav></header>
+  <main class="p3-width p3-main">
+    <div class="p3-hero"><p id="event-date" hidden></p><h1 id="event-name">Загрузка мероприятия…</h1><p id="event-description" hidden></p></div>
+    <div id="event-content" class="p3-grid" hidden>
+      <section class="panel p3-panel"><h2>О мероприятии</h2><p id="event-location"></p><p id="event-capacity"></p>
+        <p id="event-registration"></p></section>
+      <section class="panel p3-panel"><h2>Регистрация</h2>
+        <p class="p3-muted" id="event-status" role="status"></p>
+        <form class="workspace-form" id="event-form" hidden>
+          <label>Имя<input name="name" required maxlength="80" autocomplete="name"></label>
+          <label>Email для билета<input name="email" type="email" required maxlength="254" autocomplete="email"></label>
+          <div id="event-questions" class="booking-question-fields" hidden></div>
+          <button id="event-join" type="submit" class="page-action">Записаться</button>
+        </form>
+        <div id="event-ticket" class="p3-ticket" hidden><strong>Билет участника</strong>
+          <canvas id="event-qr" width="150" height="150" aria-label="QR-код билета"></canvas>
+          <p><code id="event-ticket-code"></code></p>
+          <a id="event-ics" class="outline-action">Скачать .ics</a>
+        </div>
+        <div class="p3-line p3-divider">
+          <button id="event-refresh" type="button" class="outline-action">Обновить статус</button>
+          <button id="event-cancel" type="button" class="outline-action" hidden>Отменить запись</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

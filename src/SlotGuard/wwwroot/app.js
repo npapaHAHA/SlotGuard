@@ -12,21 +12,21 @@ const labels = {
   held: "Ваш резерв",
   pending: "На согласовании",
   maintenance: "Обслуживание",
+  external: "Внешний календарь",
+  restricted: "По правилам",
+  group: "Занятие",
   past: "Прошло"
 };
 const resourceIcons = { microscope: "◎", electronics: "ϟ", studio: "◉" };
+const calendarResourceIcons = { room: "meeting_room", equipment: "settings" };
 const state = {
   session: null, organizations: [], organizationId: null,
-  resources: [], resourceId: null, calendar: null, selected: null, race: null, busy: false
+  resources: [], resourceId: null, calendar: null, selected: null, selectedDay: null, race: null, busy: false
 };
+let viewerPreference = savedTimeZone();
+let viewerZone = viewerPreference || browserTimeZone;
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   month: "long", day: "numeric", timeZone: "UTC"
-});
-const slotDateFormat = new Intl.DateTimeFormat("ru-RU", {
-  weekday: "long", month: "long", day: "numeric", timeZone: "Europe/Moscow"
-});
-const timeFormat = new Intl.DateTimeFormat("ru-RU", {
-  hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow"
 });
 const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 let polling = false;
@@ -72,6 +72,9 @@ async function api(url, options, organizationId) {
     const error = new Error(problem.title || fallback);
     error.status = response.status;
     error.conflicts = problem.conflicts;
+    error.templateConflicts = problem.templateConflicts;
+    error.bookingForm = problem.bookingForm;
+    error.questionErrors = problem.questionErrors;
     throw error;
   }
   if (response.status !== 204) return response.json();
@@ -90,6 +93,14 @@ function isoPlusDays(iso, days) {
   return date.toISOString().slice(0, 10);
 }
 
+function mondayOfDay(day) {
+  return isoPlusDays(day, -((new Date(day).getUTCDay() + 6) % 7));
+}
+
+function weekOf(value, zone = viewerZone) {
+  return mondayOfDay(zoneFormats(zone).day.format(new Date(value)));
+}
+
 function allSlots() {
   return state.calendar?.days.flatMap(day => day.slots) ?? [];
 }
@@ -98,22 +109,39 @@ function selectedSlot() {
   return allSlots().find(slot => slot.startsAt === state.selected);
 }
 
-function fetchCalendar(resourceId, week, organizationId = state.organizationId) {
-  const query = new URLSearchParams({ resourceId });
+async function fetchCalendar(resourceId, week, organizationId = state.organizationId, timeZone = viewerZone, duration = 60,
+  signal) {
+  const query = new URLSearchParams({ resourceId, timeZone, durationMinutes: duration });
+  const options = signal ? { signal, cache: "no-store" } : undefined;
   if (week) query.set("week", week);
-  return api(`/api/calendar?${query}`, undefined, organizationId);
+  try { return await api(`/api/calendar?${query}`, options, organizationId); }
+  catch (error) {
+    if (error.status !== 400 || duration === 60) throw error;
+    query.set("durationMinutes", "60");
+    return api(`/api/calendar?${query}`, options, organizationId);
+  }
 }
 
-async function loadCalendar(resourceId, week, retainSelection = false, organizationId = state.organizationId) {
-  const calendar = await fetchCalendar(resourceId, week, organizationId);
+async function loadCalendar(resourceId, week, retainSelection = false, organizationId = state.organizationId,
+  duration = resourceId === state.resourceId ? state.calendar?.durationMinutes ?? 60 : 60, day = null) {
+  const calendar = await fetchCalendar(resourceId, week, organizationId, viewerZone, duration);
   state.calendar = calendar;
   state.resourceId = resourceId;
-  const slots = allSlots();
-  const retained = retainSelection && slots.find(slot => slot.startsAt === state.selected);
-  const initial = retained || slots.find(slot => slot.status === "available")
-    || slots.find(slot => slot.status !== "past") || slots[0];
-  state.selected = initial?.startsAt ?? null;
+  if (!retainSelection) state.selectedDay = day;
+  reconcileCalendarSelection(retainSelection);
   if (!retainSelection) state.race = null;
+}
+
+function preferredCalendarSlot(slots) {
+  return slots.find(slot => slot.status === "available") ?? slots.find(slot => slot.status !== "past") ?? slots[0];
+}
+
+function reconcileCalendarSelection(retainSelection) {
+  if (retainSelection && selectedSlot()) return;
+  const shownDay = state.calendar.days.find(day => day.date === state.selectedDay);
+  const slot = preferredCalendarSlot(shownDay?.slots ?? allSlots());
+  state.selected = slot?.startsAt ?? null;
+  state.race = null;
 }
 
 async function pollWaitlist(force = false) {
@@ -123,23 +151,21 @@ async function pollWaitlist(force = false) {
 
   polling = true;
   try {
-    const calendar = await fetchCalendar(state.resourceId, previous.week);
+    const calendar = await fetchCalendar(state.resourceId, previous.week, state.organizationId, viewerZone, previous.durationMinutes);
     if (state.busy || state.calendar !== previous || JSON.stringify(calendar) === JSON.stringify(previous)) return;
 
     const previousSlot = selectedSlot();
     const focusedSlot = document.activeElement?.dataset.startsAt;
     const focusedDay = document.activeElement?.dataset.day;
     state.calendar = calendar;
+    reconcileCalendarSelection(true);
     renderCalendar();
-    if (focusedSlot) {
-      [...ui.week.querySelectorAll(".slot")].find(node => node.dataset.startsAt === focusedSlot)
-        ?.focus({ preventScroll: true });
-    } else if (focusedDay) {
-      [...ui["mobile-days"].children].find(node => node.dataset.day === focusedDay)
-        ?.focus({ preventScroll: true });
-    }
+    if (focusedSlot) calendarSlotControl(focusedSlot)?.focus({ preventScroll: true });
+    else if (focusedDay) calendarDayControl(focusedDay)?.focus({ preventScroll: true });
     const slot = selectedSlot();
-    if (JSON.stringify(slot) !== JSON.stringify(previousSlot) || calendar.requiresApproval !== previous.requiresApproval) {
+    if (JSON.stringify(slot) !== JSON.stringify(previousSlot) || calendar.requiresApproval !== previous.requiresApproval
+      || calendar.resourceTimeZone !== previous.resourceTimeZone || calendar.priceMinor !== previous.priceMinor
+      || calendar.publicLinkId !== previous.publicLinkId) {
       renderDetails();
       if (slot?.status === "held" && previousSlot?.status !== "held")
         ui.status.textContent = "Слот зарезервирован для вас.";
@@ -161,7 +187,7 @@ function renderNotifications(items) {
     const start = new Date(item.startsAt);
     control.append(
       element("strong", "", item.resourceName),
-      element("span", "", `${slotDateFormat.format(start)}, ${timeFormat.format(start)} · подтвердите до ${timeFormat.format(new Date(item.holdExpiresAt))}`)
+      element("span", "", `${appointmentTime(start, viewerZone, true, item.endsAt)} · подтвердите до ${zoneFormats(viewerZone).time.format(new Date(item.holdExpiresAt))}`)
     );
     return control;
   }));
@@ -173,7 +199,7 @@ async function pollNotifications() {
 
   pollingNotifications = true;
   try {
-    const items = await api("/api/notifications", undefined, organizationId);
+    const items = await api(`/api/notifications?${new URLSearchParams({ timeZone: viewerZone })}`, undefined, organizationId);
     if (!state.busy && state.session === session && state.organizationId === organizationId)
       renderNotifications(items);
   } catch {
@@ -204,33 +230,27 @@ async function run(action, retry) {
     render();
     if (resourceFocus) {
       [...ui.resources.children].find(node => node.dataset.resourceId === resourceFocus)?.focus();
-    } else if (slotFocus || focused?.closest(".details")) {
-      ui.week.querySelector('.slot[aria-pressed="true"]')?.focus({ preventScroll: true });
+    } else if ((slotFocus || focused?.closest(".details"))
+      && !section("calendar-feedback").contains(document.activeElement)) {
+      calendarSlotControl(state.selected)?.focus({ preventScroll: true });
     }
   }
 }
 
-async function changeCalendar(resourceId, week) {
+async function changeCalendar(resourceId, week, day) {
   const previous = state.calendar;
   await run(async () => {
-    await loadCalendar(resourceId, week);
+    await loadCalendar(resourceId, week, false, undefined, undefined, day);
     scrollSelectionIntoView();
-  }, () => changeCalendar(resourceId, week));
-  if (previous !== state.calendar) reveal(ui.week, 4);
-}
-
-function scrollSelectionIntoView() {
-  requestAnimationFrame(() => {
-    const selected = ui.week.querySelector('.slot[aria-pressed="true"]');
-    const viewport = ui.week.parentElement;
-    if (!selected) return;
-    const offset = selected.getBoundingClientRect().left - viewport.getBoundingClientRect().left;
-    if (offset < 0 || offset + selected.offsetWidth > viewport.clientWidth)
-      viewport.scrollLeft += offset - 7;
-  });
+  }, () => changeCalendar(resourceId, week, day));
+  if (previous !== state.calendar) reveal(calendarView === "month" ? section("calendar-month-slots") : calendarViewPanel());
 }
 
 function render() {
+  section("display-time-zone").disabled = state.busy;
+  section("display-time-zone").value = viewerPreference;
+  section("calendar-zone").textContent = timeZoneLabel(viewerZone);
+  section("availability-zone").textContent = `Время поиска · ${timeZoneLabel(viewerZone)}`;
   for (const control of ui.notifications.querySelectorAll("button"))
     control.disabled = state.busy;
   renderOrganization();
@@ -260,7 +280,7 @@ function renderOrganization() {
   select.replaceChildren(...options);
   select.value = organization.id;
   select.disabled = state.busy || options.length < 2;
-  ui["organization-role"].textContent = organization.role === "admin" ? "Администратор" : "Участник";
+  ui["organization-role"].textContent = organizationRoleLabel(organization.role);
 }
 
 function isAdmin() {
@@ -268,23 +288,40 @@ function isAdmin() {
 }
 
 function renderResources() {
-  const query = ui["calendar-search"].value.trim().toLocaleLowerCase("ru");
+  const selected = state.resources.find(resource => resource.id === state.resourceId);
+  const picker = section("calendar-picker");
+  picker.hidden = state.resources.length < 2;
+  if (picker.hidden) picker.open = false;
+  section("calendar-resource-icon").textContent = calendarResourceIcons[selected?.type] ?? "event_available";
+  section("calendar-resource-name").textContent = selected?.name ?? "Нет доступных ресурсов";
+  const locationCaption = section("calendar-resource-location");
+  locationCaption.textContent = selected?.location ?? "";
+  locationCaption.hidden = !locationCaption.textContent;
+  ui["calendar-search-wrap"].hidden = picker.hidden;
+  const query = ui["calendar-search-wrap"].hidden ? "" : ui["calendar-search"].value.trim().toLocaleLowerCase("ru");
   const resources = state.resources.filter(resource =>
     `${resource.name} ${resource.location}`.toLocaleLowerCase("ru").includes(query));
-  ui["calendar-search-wrap"].hidden = state.resources.length < 2;
   const buttons = resources.map(resource => {
-    const item = button("resource", undefined, () => changeCalendar(resource.id, state.calendar?.week));
+    const item = button("resource", undefined, () => {
+      picker.open = false;
+      section("calendar-picker-toggle").focus({ preventScroll: true });
+      if (resource.id !== state.resourceId) changeCalendar(resource.id, state.calendar?.week);
+    });
     item.dataset.resourceId = resource.id;
     item.disabled = state.busy;
     item.setAttribute("aria-pressed", resource.id === state.resourceId);
-    const icon = element("span", `resource-icon ${resource.id}`, resourceIcons[resource.id] ?? "•");
-    icon.setAttribute("aria-hidden", "true");
-    const description = element("span", "");
+    const icon = symbol(calendarResourceIcons[resource.type] ?? "event_available");
+    const description = element("span", "calendar-picker-description");
     description.append(
       element("span", "resource-name", resource.name),
       element("span", "resource-location", resource.location)
     );
     item.append(icon, description);
+    if (resource.id === state.resourceId) {
+      const check = element("span", "calendar-picker-check", "✓");
+      check.setAttribute("aria-hidden", "true");
+      item.append(check);
+    }
     return item;
   });
   ui.resources.replaceChildren(...(buttons.length ? buttons : (state.organizationId
@@ -293,29 +330,42 @@ function renderResources() {
 
 function renderCalendar() {
   const calendar = state.calendar;
-  renderWeekScene();
-  ui.prev.disabled = state.busy || !calendar || calendar.week === calendar.firstWeek;
-  ui.today.disabled = ui.prev.disabled;
-  ui.next.disabled = state.busy || !calendar || calendar.week === calendar.lastWeek;
-  if (!calendar) {
-    ui["week-label"].textContent = state.busy ? "Загрузка…" : "Выберите доступный ресурс";
-    ui.week.replaceChildren();
-    ui["mobile-days"].replaceChildren();
-    return;
+  section("external-calendar-legend").hidden = !allSlots().some(slot => slot.status === "external");
+  section("group-session-legend").hidden = !allSlots().some(slot => slot.status === "group");
+  const policyCaption = section("calendar-policy");
+  policyCaption.textContent = [bookingPolicySummary(calendar?.policy), calendar?.bookingMessage].filter(Boolean).join(" · ");
+  policyCaption.hidden = !policyCaption.textContent;
+  const durationControl = section("calendar-duration");
+  const flexible = calendar?.durationOptions.length > 1;
+  section("calendar-duration-bar").hidden = !flexible;
+  ui.week.parentElement.classList.toggle("flexible-slots", flexible);
+  if (calendar) {
+    fillDurations(durationControl, calendar.durationOptions, calendar.durationMinutes);
+    durationControl.disabled = state.busy;
+    const { bufferBeforeMinutes, bufferAfterMinutes } = calendar;
+    section("calendar-buffer").textContent = bufferBeforeMinutes || bufferAfterMinutes
+      ? `Буфер · ${bufferBeforeMinutes} мин до и ${bufferAfterMinutes} мин после` : "Старт каждые 15 минут";
   }
+  section("calendar-check-time").disabled = state.busy || !calendar;
+  if (calendar) {
+    const { days, today, resourceTimeZone } = calendar;
+    const day = days.find(item => item.slots.some(slot => slot.startsAt === state.selected))
+      ?? days.find(item => item.date === state.selectedDay)
+      ?? days.find(item => item.date === today) ?? days[0];
+    state.selectedDay = day.date;
+    section("calendar-zone").title = `Часовой пояс ресурса · ${timeZoneLabel(resourceTimeZone)}`;
+  }
+  renderCalendarView();
+}
 
-  const { week, days } = calendar;
-  ui["week-label"].textContent = dateFormat.formatRange(new Date(week), new Date(days.at(-1).date))
-    + ` ${new Date(days.at(-1).date).getUTCFullYear()}`;
-
+function renderWeekSchedule() {
+  const calendar = state.calendar;
   const mobileTabs = [];
-  const columns = days.map((day, index) => {
+  const columns = calendar.days.map((day, index) => {
     const column = element("div", day.date === calendar.today ? "day current" : "day");
     column.dataset.date = day.date;
     const dayButton = button("mobile-day", undefined, () => {
-      const slot = day.slots.find(item => item.status === "available")
-        ?? day.slots.find(item => item.status !== "past") ?? day.slots[0];
-      if (slot) selectSlot(slot, day.date);
+      selectSlot(preferredCalendarSlot(day.slots), day.date);
     });
     dayButton.dataset.day = day.date;
     dayButton.disabled = state.busy;
@@ -326,68 +376,111 @@ function renderCalendar() {
     const heading = element("div", "day-heading");
     heading.append(element("span", "weekday", weekdays[index]), element("span", "day-number", Number(day.date.slice(-2))));
     const slots = element("div", "slots");
-    for (const slot of day.slots) {
-      const date = new Date(slot.startsAt);
-      const time = timeFormat.format(date);
-      const item = button(`slot ${slot.status}`, undefined, () => selectSlot(slot));
-      item.dataset.startsAt = slot.startsAt;
-      item.disabled = state.busy;
-      item.setAttribute("aria-pressed", slot.startsAt === state.selected);
-      const label = slot.waitlistId ? "В очереди" : labels[slot.status];
-      item.setAttribute("aria-label", `${slotDateFormat.format(date)}, ${time}. ${label}`);
-      item.append(element("span", "slot-time", time), element("span", "slot-state", label));
-      slots.append(item);
-    }
+    slots.append(...calendarSlotButtons(day));
     column.append(heading, slots);
     return column;
   });
   ui.week.replaceChildren(...columns);
   ui["mobile-days"].replaceChildren(...mobileTabs);
-  renderMobileDay(days.find(day => day.slots.some(slot => slot.startsAt === state.selected))?.date ?? days[0].date);
+  updateWeekDay();
 }
 
-function renderMobileDay(date) {
+function calendarSlotButtons(day, showRange = false) {
+  if (!day.slots.length) {
+    const inspect = button("slot-closed slot-check-day", "Нет слотов", () => showSlotDiagnostics({ date: day.date }));
+    inspect.disabled = state.busy;
+    inspect.setAttribute("aria-label", `Проверить время · ${dateFormat.format(new Date(day.date))}`);
+    return [inspect];
+  }
+  const formats = zoneFormats(viewerZone);
+  const times = day.slots.map(slot => formats.time.format(new Date(slot.startsAt)));
+  return day.slots.map((slot, index) => {
+    const time = times[index];
+    const duplicate = times.indexOf(time) !== times.lastIndexOf(time);
+    const offset = utcOffset(slot.startsAt, viewerZone);
+    const item = button(`slot ${slot.status}`, undefined, () => selectSlot(slot, day.date));
+    item.dataset.startsAt = slot.startsAt;
+    item.disabled = state.busy;
+    item.setAttribute("aria-pressed", slot.startsAt === state.selected);
+    const label = slot.waitlistId ? "В очереди" : labels[slot.status];
+    const range = showRange ? slotTimeRange(slot.startsAt, viewerZone, slot.endsAt) : time;
+    item.setAttribute("aria-label", `${formats.longDate.format(new Date(slot.startsAt))}, ${showRange ? range : `${time} ${offset}`}. ${label}`);
+    item.append(element("span", "slot-time", range), element("span", "slot-state", label));
+    if (duplicate && !showRange) item.append(element("span", "slot-offset", offset));
+    return item;
+  });
+}
+
+function updateWeekDay() {
   for (const column of ui.week.children)
-    column.dataset.mobileActive = String(column.dataset.date === date);
+    column.dataset.mobileActive = String(column.dataset.date === state.selectedDay);
   for (const tab of ui["mobile-days"].children)
-    tab.setAttribute("aria-pressed", String(tab.dataset.day === date));
+    tab.setAttribute("aria-pressed", String(tab.dataset.day === state.selectedDay));
 }
 
 function selectSlot(slot, day) {
-  const changed = slot.startsAt !== state.selected;
+  const start = slot?.startsAt ?? null;
+  const changed = start !== state.selected;
+  const previousDay = state.selectedDay;
   if (changed) state.race = null;
-  state.selected = slot.startsAt;
-  for (const item of ui.week.querySelectorAll(".slot"))
-    item.setAttribute("aria-pressed", item.dataset.startsAt === state.selected);
-  renderMobileDay(day ?? state.calendar.days.find(item => item.slots.includes(slot)).date);
-  updateSceneSelection();
+  state.selected = start;
+  state.selectedDay = day ?? state.calendar.days.find(item => item.slots.includes(slot)).date;
+  syncCalendarViewSelection(previousDay);
   renderDetails();
   if (changed) reveal(ui.details, 5);
 }
 
 function renderDetails() {
   const slot = selectedSlot();
+  syncCalendarFeedback();
   ui.details.replaceChildren();
-  ui["race-panel"].hidden = !slot || (slot.status !== "available" && !state.race);
-  if (!slot) return;
+  ui["race-panel"].hidden = !slot || state.calendar?.priceMinor != null || (slot.status !== "available" && !state.race);
+  if (!slot) {
+    if (state.selectedDay)
+      ui.details.append(element("p", "details-date", dateFormat.format(new Date(state.selectedDay))),
+        element("p", "details-date", "На этот день нет слотов."));
+    return;
+  }
 
   const start = new Date(slot.startsAt);
-  const end = new Date(start.valueOf() + 60 * 60 * 1000);
+  const end = new Date(slot.endsAt);
+  const clock = zoneFormats(viewerZone).time;
+  const fromOffset = utcOffset(start, viewerZone);
+  const toOffset = utcOffset(end, viewerZone);
+  const displayTime = element("p", "details-time", `${clock.format(start)}–${clock.format(end)}`);
+  displayTime.append(element("span", "details-offset", fromOffset === toOffset ? toOffset : `${fromOffset} → ${toOffset}`));
   const section = element("div", "details-slot");
   const resource = state.resources.find(item => item.id === state.resourceId);
   section.append(
     element("span", `pill ${slot.status}`, labels[slot.status]),
-    element("p", "details-date", slotDateFormat.format(start)),
-    element("p", "details-time", `${timeFormat.format(start)}–${timeFormat.format(end)}`)
+    element("p", "details-date", zoneFormats(viewerZone).longDate.format(start)),
+    displayTime
   );
   if (resource) {
     const context = element("div", "slot-resource");
     const identity = element("div", "data-title");
     identity.append(element("strong", "", resource.name), element("span", "", resource.location));
+    const resourceZone = state.calendar.resourceTimeZone;
+    if (resourceZone !== viewerZone)
+      identity.append(element("span", "", `${timeZoneLabel(resourceZone)} · ${slotTimeRange(start, resourceZone, end)}`));
     context.append(symbol("meeting_room"), identity);
     section.append(context);
   }
-  renderSlotActions(section, slot);
+  if (slot.groupSessionId) {
+    section.append(element("strong", "group-calendar-title", slot.groupTitle),
+      button("page-action", "Открыть занятие", () => openGroupSession(slot.groupSessionId)));
+  } else renderSlotActions(section, slot);
+  if (slot.answerBookingId) {
+    const answers = button("outline-action", "Ответы гостя", () => openCalendarAnswers(slot.answerBookingId, resource?.name));
+    answers.disabled = state.busy;
+    section.append(answers);
+  }
+  if (slot.status !== "available") {
+    const inspect = button("outline-action slot-check-action", "Почему недоступно?",
+      () => showSlotDiagnostics({ startsAt: slot.startsAt }));
+    inspect.disabled = state.busy;
+    section.append(inspect);
+  }
   ui.details.append(section);
   updateCountdown();
   ui["race-button"].hidden = slot.status !== "available";
@@ -405,6 +498,36 @@ function renderDetails() {
   }
 }
 
+function showSlotDiagnostics({ startsAt, date } = {}) {
+  const { resourceId, calendar } = state;
+  if (!calendar || state.busy) return;
+  const context = calendarBookingContext();
+  const { timeZone, duration } = context;
+  const slot = startsAt ?? (date ? null : selectedSlot()?.startsAt);
+  const local = zoneFormats(timeZone);
+  openSlotDiagnostics({
+    resourceName: state.resources.find(item => item.id === resourceId)?.name,
+    duration,
+    timeZone,
+    resourceZone: calendar.resourceTimeZone,
+    firstDay: calendar.firstWeek,
+    lastDay: isoPlusDays(calendar.lastWeek, 6),
+    date: date ?? (slot ? local.day.format(new Date(slot)) : state.selectedDay ?? calendar.today),
+    time: slot ? local.time.format(new Date(slot)) : "09:00",
+    startsAt,
+    check: (parameters, signal) => checkCalendarSlot(context, parameters, signal),
+    choose: async (start, signal) => {
+      const choice = await readAvailableCalendarSlot(context, start, signal);
+      if (signal.aborted || !sameCalendarContext(context) || state.busy || !choice) return false;
+      applyAvailableCalendarSlot(choice);
+      ui.status.textContent = "Свободный слот выбран.";
+      return true;
+    }
+  });
+}
+
+section("calendar-check-time").addEventListener("click", () => showSlotDiagnostics());
+
 function renderSlotActions(section, slot) {
   function action(css, label, url, options, message) {
     const control = button(css, label, () => updateBooking(url, options, message));
@@ -416,47 +539,112 @@ function renderSlotActions(section, slot) {
   const booking = `/api/bookings/${slot.bookingId}`;
   const remove = { method: "DELETE" };
   const requiresApproval = state.calendar?.requiresApproval;
-  const approvalMessage = requiresApproval ? "Заявка отправлена на согласование." : "Бронирование подтверждено.";
+  if ((slot.status === "mine" || slot.status === "pending") && slot.changes?.canReschedule !== false) {
+    const resource = state.resources.find(item => item.id === state.resourceId);
+    const move = button("button secondary", "Перенести", () => showWorkspaceReschedule({
+      id: slot.bookingId, resourceName: resource?.name, startsAt: slot.startsAt, endsAt: slot.endsAt
+    }));
+    move.disabled = state.busy;
+    section.append(move);
+  }
+  const deadlines = bookingDeadlines(slot.changes, slot.startsAt, viewerZone);
+  if (deadlines) section.append(element("p", "details-date", deadlines));
 
   switch (slot.status) {
     case "available":
-      action("button primary", requiresApproval ? "Отправить заявку" : "Забронировать", "/api/bookings",
-        bookingPayload(slot), "Бронирование подтверждено.");
+      if (state.calendar.priceMinor != null) {
+        section.append(element("p", "details-date", `Демо-оплата · ${bookingPrice(state.calendar.priceMinor)} за бронь`));
+        if (state.calendar.publicLinkId) {
+          const guestPage = element("a", "outline-action", "Открыть страницу бронирования");
+          guestPage.href = `/book/${state.calendar.publicLinkId}`;
+          section.append(guestPage);
+        } else section.append(element("p", "details-date", "Откройте ссылку на ресурс, выданную администратором."));
+        if (isAdmin()) section.append(maintenanceForm(slot));
+        break;
+      }
+      const book = button("button primary", requiresApproval ? "Отправить заявку" : "Забронировать", () => bookCalendarSlot(slot));
+      book.disabled = state.busy;
+      section.append(book);
+      const series = button("button secondary", "Повторять каждую неделю", () => showWorkspaceSeries(slot));
+      series.disabled = state.busy;
+      section.append(series);
       if (isAdmin()) section.append(maintenanceForm(slot));
       break;
     case "pending":
+      if (slot.bundleId) {
+        section.append(bundleAgendaLink());
+        break;
+      }
       section.append(element("p", "details-date", "Статус и причина решения появятся в «Моих записях»."));
-      action("button secondary cancel", "Отозвать заявку", booking, remove, "Заявка отозвана.");
+      if (slot.changes?.canCancel !== false) action("button secondary cancel", "Отозвать заявку", booking, remove, "Заявка отозвана.");
       break;
     case "mine":
-      action("button secondary cancel", "Отменить бронь", booking, remove, "Бронь отменена.");
+      if (slot.bundleId) {
+        section.append(bundleAgendaLink());
+        break;
+      }
+      if (slot.changes?.canCancel !== false) action("button secondary cancel", "Отменить бронь", booking, remove, "Бронь отменена.");
       break;
     case "booked":
       if (slot.waitlistId) {
         section.append(element("p", "details-date", `Место в очереди — ${slot.waitlistPosition}`));
         action("button secondary cancel", "Выйти из очереди", `/api/waitlist/${slot.waitlistId}`, remove, "Вы вышли из очереди.");
-      } else {
+      } else if (slot.bookingRestriction) {
+        section.append(element("p", "details-date", slot.bookingRestriction));
+      } else if (state.calendar.priceMinor == null) {
         action("button secondary cancel", "Встать в очередь", "/api/waitlist", bookingPayload(slot), "Вы в листе ожидания.");
       }
+      break;
+    case "restricted":
+      section.append(element("p", "details-date", slot.bookingRestriction));
+      break;
+    case "external":
+      section.append(element("p", "details-date", "Это время занято в подключённом Google Calendar."));
       break;
     case "held": {
       const countdown = element("p", "details-date hold-countdown");
       countdown.dataset.expiresAt = slot.holdExpiresAt;
       section.append(countdown);
-      const confirm = action("button primary", requiresApproval ? "Отправить заявку" : "Подтвердить бронь", `${booking}/confirm`,
-        { method: "POST" }, approvalMessage);
+      const confirm = button("button primary", requiresApproval ? "Отправить заявку" : "Подтвердить бронь",
+        () => confirmBookingHold(slot.bookingId, state.resourceId, state.calendar.bookingForm, requiresApproval));
       confirm.dataset.holdConfirm = "";
+      section.append(confirm);
       action("button secondary cancel", "Отказаться от резерва", booking, remove, "Резерв освобождён.");
       break;
     }
     case "maintenance":
       section.append(element("p", "details-date", slot.maintenanceReason));
+      if (slot.maintenanceStartsAt) section.append(element("p", "details-date", `${slotTimeRange(slot.maintenanceStartsAt, viewerZone, slot.maintenanceEndsAt)}`));
       if (isAdmin() && slot.maintenanceId) {
         action("button secondary cancel", "Снять блокировку", `/api/maintenance/${slot.maintenanceId}`,
           remove, "Слот снова доступен.");
       }
       break;
   }
+}
+
+function bundleAgendaLink() {
+  const link = element("a", "text-link", "Управлять комплектом в «Моих записях»");
+  link.href = "#mine";
+  return link;
+}
+
+function showWorkspaceSeries(slot) {
+  const path = `/api/resources/${encodeURIComponent(state.resourceId)}/series`;
+  const organization = state.organizationId;
+  openWeeklySeries({
+    startsAt: slot.startsAt,
+    durationMinutes: state.calendar.durationMinutes,
+    bookingForm: state.calendar.bookingForm,
+    send: (suffix, options) => request(path + suffix, options, organization),
+    onBooked: result => run(async () => {
+      await refreshCalendar();
+      await loadWorkspace();
+      ui.status.textContent = result.bookings.some(item => item.approvalStatus === "pending")
+        ? `На согласовании: ${result.bookings.length} записей.`
+        : `Серия сохранена. В «Моих записях» появилось ${result.bookings.length} броней.`;
+    })
+  });
 }
 
 function maintenanceForm(slot) {
@@ -494,7 +682,7 @@ function bookingPayload(slot, fields = {}) {
   return {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resourceId: state.resourceId, startsAt: slot.startsAt, ...fields })
+    body: JSON.stringify({ resourceId: state.resourceId, startsAt: slot.startsAt, durationMinutes: state.calendar.durationMinutes, ...fields })
   };
 }
 
@@ -502,40 +690,148 @@ function refreshCalendar() {
   return state.calendar ? loadCalendar(state.resourceId, state.calendar.week, true) : Promise.resolve();
 }
 
+function withBookingQuestions({ resourceId, form, context, label, submit, onBooked, onError }) {
+  const failure = onError ?? (async error => { throw error; });
+  const open = current => openBookingQuestionDialog({
+    form: current, context, label, submit,
+    onBooked: result => run(() => onBooked(result)),
+    onError: error => run(() => failure(error))
+  });
+  return run(async () => {
+    let current = form;
+    if (!current) {
+      try {
+        current = await api(`/api/resources/${encodeURIComponent(resourceId)}/booking-form`);
+      } catch (error) {
+        await failure(error);
+        return;
+      }
+    }
+    if (current.questions.length) {
+      open(current);
+      return;
+    }
+    let result;
+    try {
+      result = await submit(null);
+    } catch (error) {
+      if (error.bookingForm) open(error.bookingForm);
+      else await failure(error);
+      return;
+    }
+    await onBooked(result);
+  });
+}
+
+async function finishCalendarBooking(result, message, context) {
+  state.race = null;
+  const pending = result?.approvalStatus === "pending";
+  const text = pending ? "Заявка отправлена на согласование." : message;
+  if (context) {
+    setCalendarFeedback(context, pending ? "review" : "success", text);
+    focusCalendarFeedback();
+  } else ui.status.textContent = text;
+  await refreshCalendar();
+  await loadWorkspace();
+}
+
+async function recoverCalendarBooking(error, context, allowAlternatives = false) {
+  if (!context) {
+    await refreshCalendar();
+    await loadWorkspace();
+    throw error;
+  }
+  const message = error instanceof TypeError ? "Не удалось связаться с сервером. Повторите попытку." : error.message;
+  const conflict = allowAlternatives && error.status === 409;
+  setCalendarFeedback(context, conflict ? "conflict" : "error", message, [],
+    conflict ? "Проверяем ближайшие свободные слоты…" : "");
+  focusCalendarFeedback();
+  if (conflict) {
+    await Promise.allSettled([showCalendarAlternatives(context, message), refreshCalendar()]);
+  } else await refreshCalendar().catch(() => {});
+}
+
+function bookCalendarSlot(slot) {
+  const { calendar, resourceId, organizationId } = state;
+  const context = calendarBookingContext(slot.startsAt);
+  const payload = { resourceId, startsAt: slot.startsAt, durationMinutes: calendar.durationMinutes };
+  return withBookingQuestions({
+    resourceId, form: calendar.bookingForm, context: state.resources.find(item => item.id === resourceId)?.name,
+    label: calendar.requiresApproval ? "Отправить заявку" : "Забронировать",
+    submit: bookingForm => submitCalendarChange(context,
+      () => api("/api/bookings", jsonRequest("POST", { ...payload, bookingForm }), organizationId)),
+    onBooked: result => finishCalendarBooking(result, "Бронирование подтверждено.", context),
+    onError: error => recoverCalendarBooking(error, context, true)
+  });
+}
+
+function confirmBookingHold(id, resourceId, form, requiresApproval) {
+  const organization = state.organizationId;
+  const context = currentScreen() === "calendar" && selectedSlot()?.bookingId === id ? calendarBookingContext() : null;
+  return withBookingQuestions({
+    resourceId, form, context: state.resources.find(item => item.id === resourceId)?.name,
+    label: requiresApproval ? "Отправить заявку" : "Подтвердить бронь",
+    submit: answers => submitCalendarChange(context, () => api(`/api/bookings/${id}/confirm`,
+      answers ? jsonRequest("POST", answers) : { method: "POST" }, organization)),
+    onBooked: result => finishCalendarBooking(result, requiresApproval ? "Заявка отправлена на согласование." : "Бронирование подтверждено.", context),
+    onError: error => recoverCalendarBooking(error, context)
+  });
+}
+
+function openCalendarAnswers(id, context) {
+  return run(async () => {
+    const answers = await api(`/api/bookings/${id}/answers`);
+    const dialog = questionDialog("Ответы гостя", context);
+    dialog.querySelector("[data-fields]").append(renderBookingAnswers(answers));
+    dialog.querySelector("[data-save]").remove();
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+}
+
 function updateBooking(url, options, message) {
+  const context = currentScreen() === "calendar" && selectedSlot() ? calendarBookingContext() : null;
   return run(async () => {
     state.race = null;
+    let result;
     try {
-      const result = await api(url, options);
-      ui.status.textContent = result?.approvalStatus === "pending" ? "Заявка отправлена на согласование." : message;
-    } finally {
-      await refreshCalendar();
-      await loadWorkspace();
+      result = await submitCalendarChange(context, () => api(url, options));
+    } catch (error) {
+      await recoverCalendarBooking(error, context);
+      return;
     }
+    await finishCalendarBooking(result, message, context);
   }, () => run(refreshCalendar));
 }
 
 function raceForSlot() {
   const slot = selectedSlot();
   if (slot?.status !== "available") return;
-  return run(async () => {
-    const requests = Array.from({ length: 20 }, async () => {
-      const response = await request("/api/bookings", bookingPayload(slot));
-      await response.arrayBuffer();
+  return withBookingQuestions({
+    resourceId: state.resourceId, form: state.calendar.bookingForm, label: "Запустить 20 запросов",
+    submit: bookingForm => Promise.allSettled(Array.from({ length: 20 }, async () => {
+      const response = await request("/api/bookings", bookingPayload(slot, { bookingForm }));
+      const body = await response.json().catch(() => null);
+      if (body?.bookingForm) throw Object.assign(new Error(body.title), body);
       return response.status;
-    });
-    const results = await Promise.allSettled(requests);
-    const created = results.filter(result => result.status === "fulfilled" && result.value === 201).length;
-    const conflicts = results.filter(result => result.status === "fulfilled" && result.value === 409).length;
-    state.race = { created, conflicts, other: results.length - created - conflicts };
-    await refreshCalendar();
-  }, () => run(refreshCalendar));
+    })).then(results => {
+      const stale = results.find(result => result.status === "rejected" && result.reason?.bookingForm);
+      if (stale && !results.some(result => result.status === "fulfilled" && result.value === 201)) throw stale.reason;
+      return results;
+    }),
+    onBooked: async results => {
+      const created = results.filter(result => result.status === "fulfilled" && result.value === 201).length;
+      const conflicts = results.filter(result => result.status === "fulfilled" && result.value === 409).length;
+      state.race = { created, conflicts, other: results.length - created - conflicts };
+      await refreshCalendar();
+    }
+  });
 }
 
 async function enterOrganization(id) {
   const resources = await api("/api/resources", undefined, id);
   if (resources.length) await loadCalendar(resources[0].id, undefined, false, id);
-  else Object.assign(state, { resourceId: null, calendar: null, selected: null, race: null });
+  else Object.assign(state, { resourceId: null, calendar: null, selected: null, selectedDay: null, race: null });
   state.resources = resources;
   if (id !== state.organizationId) ui["calendar-search"].value = "";
   state.organizationId = id;
@@ -551,7 +847,7 @@ async function enterSession(session, preferredOrganization = sessionStorage.getI
   disconnectCalendar();
   Object.assign(state, {
     session, organizations: [], organizationId: null,
-    resources: [], resourceId: null, calendar: null, selected: null, race: null
+    resources: [], resourceId: null, calendar: null, selected: null, selectedDay: null, race: null
   });
   ui.guest.textContent = session.label;
   ui.guest.hidden = false;
@@ -567,6 +863,44 @@ async function enterSession(session, preferredOrganization = sessionStorage.getI
 function start() {
   return run(async () => enterSession(await api("/api/session", { method: "POST" })), start);
 }
+
+async function changeViewerZone(preference) {
+  const zone = preference || browserTimeZone;
+  let calendar = state.calendar;
+  if (calendar && zone !== viewerZone) {
+    const week = state.selected ? weekOf(state.selected, zone) : calendar.week;
+    try {
+      calendar = await fetchCalendar(state.resourceId, week, state.organizationId, zone, calendar.durationMinutes);
+    } catch (error) {
+      if (error.status !== 400) throw error;
+      calendar = await fetchCalendar(state.resourceId, undefined, state.organizationId, zone, calendar.durationMinutes);
+    }
+  }
+  viewerPreference = preference;
+  saveTimeZone(preference);
+  if (zone === viewerZone) return;
+  viewerZone = zone;
+  state.selectedDay = null;
+  state.calendar = calendar;
+  if (calendar) reconcileCalendarSelection(true);
+  workspace.week = null;
+  workspace.agenda = null;
+  renderNotifications([]);
+  await availabilityZoneChanged();
+  await loadWorkspace();
+  scrollSelectionIntoView();
+}
+
+const viewerSelector = section("display-time-zone");
+section("calendar-duration").addEventListener("change", event => {
+  const duration = Number(event.currentTarget.value);
+  run(() => loadCalendar(state.resourceId, state.calendar.week, true, state.organizationId, duration));
+});
+fillTimeZones(viewerSelector, viewerPreference, true);
+viewerSelector.addEventListener("change", event => {
+  const preference = event.currentTarget.value;
+  run(() => changeViewerZone(preference));
+});
 
 ui.organization.addEventListener("change", event => {
   const id = event.currentTarget.value;
@@ -601,16 +935,30 @@ ui["login-form"].addEventListener("submit", event => {
     await enterSession(session);
   }, start);
 });
-ui.prev.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, -7)));
-ui.next.addEventListener("click", () => changeCalendar(state.resourceId, isoPlusDays(state.calendar.week, 7)));
-ui.today.addEventListener("click", () => changeCalendar(state.resourceId, state.calendar.firstWeek));
 ui["race-button"].addEventListener("click", raceForSlot);
 ui["calendar-search"].addEventListener("input", renderResources);
+const calendarPicker = section("calendar-picker");
+calendarPicker.addEventListener("toggle", () => {
+  if (calendarPicker.open || !ui["calendar-search"].value) return;
+  ui["calendar-search"].value = "";
+  renderResources();
+});
+calendarPicker.addEventListener("keydown", event => {
+  if (event.key !== "Escape" || !calendarPicker.open) return;
+  calendarPicker.open = false;
+  section("calendar-picker-toggle").focus({ preventScroll: true });
+});
+document.addEventListener("click", event => {
+  if (calendarPicker.open && !calendarPicker.contains(event.target)) calendarPicker.open = false;
+});
+window.addEventListener("hashchange", () => { calendarPicker.open = false; });
 setInterval(() => { if (!liveReady) pollWaitlist(); }, 2000);
 setInterval(pollNotifications, 2000);
 setInterval(updateCountdown, 1000);
 bindWorkspace();
+showGoogleCalendarFeedback();
 bindAvailability();
+bindCalendarViews();
 bindWeekScene();
 bindAccounts();
 start();

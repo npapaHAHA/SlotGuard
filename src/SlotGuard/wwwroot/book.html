@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#edf2e9">
+  <title>Бронирование · SlotGuard</title>
+  <script src="/theme.js"></script>
+  <link rel="icon" href="/design/slotguard-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/time-zones.css">
+  <link rel="stylesheet" href="/public-booking.css">
+  <link rel="stylesheet" href="/public-embed.css">
+  <link rel="stylesheet" href="/booking-brand.css">
+  <link rel="stylesheet" href="/reschedule.css">
+  <link rel="stylesheet" href="/weekly-series.css">
+  <link rel="stylesheet" href="/booking-questions.css">
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/time-zones.js" defer></script>
+  <script src="/booking-policy.js" defer></script>
+  <script src="/reschedule.js" defer></script>
+  <script src="/booking-questions.js" defer></script>
+  <script src="/weekly-series.js" defer></script>
+  <script src="/booking-brand.js" defer></script>
+  <script src="/booking-payments.js" defer></script>
+  <script src="/motion.js" defer></script>
+  <script src="/public-booking.js" defer></script>
+  <script src="/public-embed.js" defer></script>
+</head>
+<body class="public-body booking-palette">
+  <header class="public-header">
+    <div class="public-width theme-header">
+      <div class="brand">
+        <img id="public-brand-logo" class="brand-icon" src="/design/slotguard-mark.svg" width="36" height="36" alt="" referrerpolicy="no-referrer">
+        <span id="public-brand-name">SlotGuard</span>
+      </div>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </div>
+  </header>
+  <main class="public-width public-main">
+    <img id="public-brand-banner" class="public-brand-banner" alt="" referrerpolicy="no-referrer" hidden>
+    <section id="public-state" class="public-state" aria-live="polite">
+      <h1 id="public-state-title">Загрузка ресурса…</h1>
+      <p id="public-state-text" hidden></p>
+      <form id="public-verification" class="workspace-form public-verification" hidden>
+        <label>Рабочий email<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+        <button class="page-action" type="submit">Отправить письмо</button>
+        <p id="public-verification-message" class="form-message" role="status" hidden></p>
+      </form>
+      <button id="public-retry" type="button" class="page-action" hidden>Повторить</button>
+    </section>
+    <div id="public-layout" class="public-layout" hidden>
+      <section class="public-resource" aria-labelledby="public-resource-name">
+        <div class="public-media" aria-hidden="true">
+          <span id="public-resource-icon" class="symbol">event_available</span>
+          <img id="public-resource-photo" referrerpolicy="no-referrer" alt="" hidden>
+        </div>
+        <div class="public-resource-copy">
+          <span id="public-resource-type" class="public-kind"></span>
+          <h1 id="public-resource-name"></h1>
+          <p class="public-meta"><span class="public-pin" aria-hidden="true"></span><span id="public-location"></span></p>
+          <p id="public-resource-zone" class="public-meta"></p>
+          <p id="public-booking-policy" class="public-policy" hidden></p>
+          <p id="public-private-limit" class="public-policy" hidden></p>
+          <p id="public-capacity" class="public-meta" hidden></p>
+          <ul id="public-equipment" class="public-equipment" aria-label="Оснащение" hidden></ul>
+          <p id="public-approval" class="public-policy" hidden>Бронь подтверждает администратор.</p>
+          <p id="public-price" class="public-policy" hidden></p>
+        </div>
+      </section>
+      <section class="public-calendar" aria-labelledby="public-date-title">
+        <h2 id="public-date-title">Выберите дату</h2>
+        <div class="public-month-row">
+          <p id="public-month" aria-live="polite"></p>
+          <div class="public-month-nav">
+            <button id="public-previous" type="button" aria-label="Предыдущий месяц"><span aria-hidden="true">‹</span></button>
+            <button id="public-next" type="button" aria-label="Следующий месяц"><span aria-hidden="true">›</span></button>
+          </div>
+        </div>
+        <div class="public-weekdays" aria-hidden="true">
+          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+        </div>
+        <div id="public-days" class="public-days"></div>
+        <label class="display-zone public-display-zone" for="public-time-zone">Моё время<select id="public-time-zone" aria-label="Часовой пояс отображения"></select></label>
+      </section>
+      <section id="public-time-panel" class="public-time-panel" aria-labelledby="public-time-title">
+        <h2 id="public-time-title" tabindex="-1">Выберите время</h2>
+        <div id="public-time-form">
+          <p id="public-slot-date" class="public-slot-date"></p>
+          <p id="public-fixed-duration" class="public-duration"><span class="symbol" aria-hidden="true">schedule</span><span id="public-duration-label"></span></p>
+          <label id="public-duration-control" class="duration-bar" hidden>Длительность<select id="public-duration" aria-label="Длительность брони"></select></label>
+          <div id="public-times" class="public-times" role="group" aria-label="Свободное время"></div>
+          <p id="public-empty" class="public-empty" hidden>На этот день свободных слотов нет.</p>
+          <section id="public-checkout" class="public-checkout" aria-labelledby="public-checkout-title" hidden>
+            <h3 id="public-checkout-title" tabindex="-1">Выбранное время</h3>
+            <p id="public-selection" class="public-selection" aria-live="polite"></p>
+            <label id="public-email-control" class="public-email">
+              Email для подтверждения <span id="public-email-optional">необязательно</span>
+              <input id="public-email" type="email" maxlength="254" autocomplete="email" placeholder="name@example.com" aria-describedby="public-email-help">
+              <small id="public-email-help">Пришлём файл для календаря, ссылку на бронь и напоминания.</small>
+            </label>
+            <div id="public-booking-questions" class="booking-question-fields" hidden></div>
+            <button id="public-submit" type="button" class="page-action public-submit" disabled>Забронировать</button>
+            <button id="public-series" type="button" class="outline-action public-series-control" hidden>Повторять каждую неделю</button>
+          </section>
+          <p id="public-message" class="public-message" role="status" tabindex="-1" hidden></p>
+          <div id="public-alternatives" class="public-alternatives" hidden>
+            <h3>Ближайшее время</h3>
+            <div id="public-alternative-list"></div>
+          </div>
+        </div>
+        <div id="public-receipt" class="public-receipt" aria-live="polite" hidden>
+          <span id="public-receipt-icon" class="symbol public-receipt-icon" aria-hidden="true">check_circle</span>
+          <h3 id="public-receipt-title" tabindex="-1"></h3>
+          <p id="public-receipt-time"></p>
+          <p id="public-booking-deadlines" hidden></p>
+          <p id="public-receipt-message"></p>
+          <div id="public-payment" class="public-payment" hidden>
+            <strong id="public-payment-amount"></strong>
+            <p id="public-payment-note" hidden></p>
+            <button id="public-pay" class="page-action" type="button">Подтвердить демо-оплату</button>
+          </div>
+          <button id="public-check-status" type="button" class="outline-action" hidden>Обновить статус</button>
+          <a id="public-calendar-download" class="outline-action" hidden>Скачать .ics</a>
+          <a id="public-completion" class="page-action" target="_blank" rel="noopener noreferrer" hidden></a>
+          <button id="public-reschedule" type="button" class="outline-action" hidden>Перенести бронь</button>
+          <button id="public-cancel-booking" type="button" class="outline-action" hidden>Отменить бронь</button>
+          <button id="public-new-booking" type="button" class="outline-action">Выбрать другое время</button>
+          <div id="public-series-receipts" class="public-series-receipts" hidden></div>
+        </div>
+      </section>
+    </div>
+    <footer class="public-embed-footer" id="public-embed-footer" hidden>
+      <span><img id="public-embed-logo" src="/design/slotguard-mark.svg" width="19" height="19" alt="" referrerpolicy="no-referrer">
+        <span id="public-embed-brand">SlotGuard</span></span>
+      <a id="public-embed-full" target="_blank" rel="noopener">Открыть страницу бронирования ↗</a>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-label="Тёмная тема" aria-pressed="false" hidden></button>
+    </footer>
+  </main>
+</body>
+</html>

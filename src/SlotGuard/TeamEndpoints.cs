@@ -25,6 +25,7 @@ internal static class TeamEndpoints
     {
         api.MapGet("/team", GetTeam);
         api.MapPost("/team/invitations", Invite).RequireRateLimiting("account");
+        api.MapPost("/team/invitations/batch", InviteBatch).RequireRateLimiting("account");
     }
 
     public static async Task<IResult> CreateOrganization(CreateTeam input, ClaimsPrincipal principal,
@@ -72,30 +73,75 @@ internal static class TeamEndpoints
             return Results.Forbid();
         if (Email(input.Email) is not { } email)
             return Problem(400, "Укажите корректный email.");
-        var account = await users.FindByEmailAsync(email);
+
+        return await SendInvite(email, scope, user, db, users, mail, clock, skipPending: false, ct) switch
+        {
+            "sent" => Results.NoContent(),
+            "member" => Problem(409, "Этот аккаунт уже состоит в организации."),
+            _ => Problem(503, "Письмо не отправлено. Повторите попытку позже.")
+        };
+    }
+
+    private static async Task<IResult> InviteBatch(InviteBatchInput input, OrganizationScope scope, ClaimsPrincipal user,
+        BookingDb db, UserManager<Account> users, IWorkspaceMail mail, TimeProvider clock, CancellationToken ct)
+    {
+        if (!scope.IsAdmin || !AccountSessions.IsAccount(user))
+            return Results.Forbid();
+        if (input.Emails is not { Length: > 0 and <= 20 })
+            return Problem(400, "Укажите от 1 до 20 email.");
+        var addresses = input.Emails.Select(Email).ToArray();
+        if (addresses.Any(item => item is null))
+            return Problem(400, "Проверьте адреса email перед отправкой.");
+
+        var results = new List<InviteResult>();
+        foreach (var address in addresses.OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var status = await SendInvite(address, scope, user, db, users, mail, clock, skipPending: true, ct);
+            results.Add(new InviteResult(address, status));
+        }
+        return Results.Ok(results);
+    }
+
+    private static async Task<string> SendInvite(string email, OrganizationScope scope, ClaimsPrincipal user, BookingDb db,
+        UserManager<Account> users, IWorkspaceMail mail, TimeProvider clock, bool skipPending, CancellationToken ct)
+    {
         var organization = scope.Current;
+        var normalized = users.NormalizeEmail(email)!;
+        var now = clock.GetUtcNow();
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT 1 FROM "Organizations" WHERE "Id" = {organization.Id} FOR UPDATE
+            """, ct);
+        var account = await users.FindByEmailAsync(email);
         if (account is not null && await db.Memberships.AnyAsync(item =>
                 item.OrganizationId == organization.Id && item.OwnerId == account.Id, ct))
-            return Problem(409, "Этот аккаунт уже состоит в организации.");
+            return "member";
+        if (skipPending && await db.Invitations.AnyAsync(item => item.OrganizationId == organization.Id
+            && item.Email == normalized && item.AcceptedAt == null && item.ExpiresAt > now, ct))
+            return "pending";
 
         var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var invitation = new OrganizationInvitation
         {
-            Id = Guid.NewGuid(), OrganizationId = organization.Id, Email = users.NormalizeEmail(email)!,
-            TokenHash = Hash(token), ExpiresAt = clock.GetUtcNow().AddDays(2)
+            Id = Guid.NewGuid(), OrganizationId = organization.Id, Email = normalized,
+            TokenHash = Hash(token), ExpiresAt = now.AddDays(2)
         };
         db.Invitations.Add(invitation);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         var sent = await mail.Send(email, "Приглашение в SlotGuard",
             $"Вас пригласили в организацию «{organization.Name}». Откройте ссылку и войдите с этим email. Ссылка действует 48 часов.",
-            new MailLink("invite", token), ct);
+            new MailLink("invite", token, OrganizationId: organization.Id), ct);
         if (!sent)
         {
             // Remove a failed invitation only if nobody opened it before SMTP reported failure.
             await db.Invitations.Where(item => item.Id == invitation.Id && item.AcceptedAt == null).ExecuteDeleteAsync(ct);
-            return Problem(503, "Письмо не отправлено. Повторите попытку позже.");
+            return "failed";
         }
-        return Results.NoContent();
+        Audit.Add(db, organization.Id, invitation.Id.ToString("N"), email, WorkspaceEndpoints.Actor(user),
+            "structure.invited", "Приглашение отправлено по email.", clock.GetUtcNow());
+        await db.SaveChangesAsync(ct);
+        return "sent";
     }
 
     public static async Task<IResult> Accept(AcceptInvitation input, ClaimsPrincipal principal,
@@ -116,11 +162,17 @@ internal static class TeamEndpoints
         if (organizationId is null || await pending.ExecuteUpdateAsync(set => set.SetProperty(item => item.AcceptedAt, now), ct) == 0)
             return InvalidInvitation();
 
-        await db.Database.ExecuteSqlInterpolatedAsync($"""
+        var joined = await db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "Memberships" ("OwnerId", "OrganizationId", "Role")
             VALUES ({account.Id}, {organizationId}, {OrganizationMembership.Member})
             ON CONFLICT ("OwnerId", "OrganizationId") DO NOTHING
             """, ct);
+        if (joined != 0)
+        {
+            Audit.Add(db, organizationId, account.Id.ToString("N"), account.DisplayName, WorkspaceEndpoints.Actor(principal),
+                "structure.joined", "Вступил в организацию по приглашению.", now);
+            await db.SaveChangesAsync(ct);
+        }
         await transaction.CommitAsync(ct);
         return Results.Ok(new { organizationId });
     }
@@ -129,5 +181,7 @@ internal static class TeamEndpoints
     private static IResult InvalidInvitation() => Problem(400, "Приглашение недействительно для этого аккаунта.");
     internal sealed record CreateTeam(string? Name);
     internal sealed record InviteTeam(string? Email);
+    private sealed record InviteBatchInput(string?[]? Emails);
+    private sealed record InviteResult(string Email, string Status);
     internal sealed record AcceptInvitation(string? Token);
 }

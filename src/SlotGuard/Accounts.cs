@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +12,10 @@ public sealed class Account : IdentityUser<Guid>
 {
     [MaxLength(100)]
     public required string DisplayName { get; init; }
+    public string? ProtectedAuthenticatorKey { get; set; }
+    public string[] FactorRecoveryHashes { get; set; } = [];
+    public long? LastAuthenticatorStep { get; set; }
+    public Guid? PendingFactorId { get; set; }
 }
 
 internal sealed class AccountPrincipalFactory(UserManager<Account> users, IOptions<IdentityOptions> options)
@@ -32,6 +35,20 @@ internal static class AccountSessions
 
     public static IResult Describe(string name, bool demoEnabled) =>
         Results.Ok(new { label = name, demoEnabled, isDemo = false, isAccount = true });
+
+    public static async Task ValidateCookie(CookieValidatePrincipalContext context)
+    {
+        var services = context.HttpContext.RequestServices;
+        var db = services.GetRequiredService<BookingDb>();
+        var options = services.GetRequiredService<IOptions<IdentityOptions>>().Value.ClaimsIdentity;
+        var principal = context.Principal!;
+        var id = principal.FindFirstValue(options.UserIdClaimType);
+        var stamp = principal.FindFirstValue(options.SecurityStampClaimType);
+        if (!Guid.TryParse(id, out var accountId) || string.IsNullOrEmpty(stamp)
+            || !await db.Users.AsNoTracking().AnyAsync(account => account.Id == accountId && account.SecurityStamp == stamp,
+                context.HttpContext.RequestAborted))
+            context.RejectPrincipal();
+    }
 }
 
 internal static class AccountEndpoints
@@ -40,7 +57,9 @@ internal static class AccountEndpoints
     {
         var accounts = app.MapGroup("/api/account").RequireRateLimiting("account");
         accounts.MapPost("/register", Register);
-        accounts.MapPost("/login", Login);
+        accounts.MapPost("/login", (HttpContext http, Credentials input, AccountSecurity security, CancellationToken ct) =>
+            security.Login(http, input, ct));
+        AccountSecurity.Map(accounts);
         accounts.MapPost("/confirm", ConfirmEmail);
         accounts.MapPost("/email", RequestEmail);
         accounts.MapPost("/reset", ResetPassword);
@@ -78,23 +97,6 @@ internal static class AccountEndpoints
                 : PasswordProblem();
 
         return await SendConfirmation(account, users, mail, ct);
-    }
-
-    private static async Task<IResult> Login(Credentials input, UserManager<Account> users, SignInManager<Account> signIn,
-        HttpContext context, IConfiguration config)
-    {
-        if (Email(input.Email) is not { } email || !ValidPasswordLength(input.Password))
-            return BadLogin();
-        var account = await users.FindByEmailAsync(email);
-        if (account is null)
-            return BadLogin();
-        var result = await signIn.CheckPasswordSignInAsync(account, input.Password!, lockoutOnFailure: true);
-        if (!result.Succeeded)
-            return BadLogin();
-
-        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-            await signIn.CreateUserPrincipalAsync(account));
-        return AccountSessions.Describe(account.DisplayName, !string.IsNullOrEmpty(config["DemoAccounts:Password"]));
     }
 
     private static async Task<IResult> ConfirmEmail(EmailToken input, UserManager<Account> users)
@@ -161,7 +163,6 @@ internal static class AccountEndpoints
     }
 
     private static bool ValidPasswordLength(string? password) => password is { Length: >= 10 and <= 128 };
-    private static IResult BadLogin() => Problem(401, "Проверьте email, пароль и подтверждение почты.");
     private static IResult InvalidLink() => Problem(400, "Ссылка недействительна или её срок истёк.");
     private static IResult PasswordProblem() => Problem(400,
         "Пароль должен содержать от 10 до 128 символов, строчную и заглавную буквы, цифру и спецсимвол.");

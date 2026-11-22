@@ -1,5 +1,7 @@
 const accountModes = {
   login: ["Войти в SlotGuard", "Откройте своё расписание и команду.", "Войти"],
+  factor: ["Подтвердите вход", "Введите новый код из приложения-аутентификатора.", "Подтвердить вход"],
+  recovery: ["Вход с кодом восстановления", "Введите один из сохранённых одноразовых кодов.", "Подтвердить вход"],
   register: ["Создать аккаунт", "Пришлём письмо для подтверждения адреса.", "Зарегистрироваться"],
   forgot: ["Восстановить пароль", "Отправим ссылку на подтверждённый email.", "Отправить письмо"],
   resend: ["Подтверждение email", "Отправим письмо повторно.", "Отправить письмо"],
@@ -34,6 +36,10 @@ function showAccount(mode) {
     fields.append(row);
   };
   if (mode === "register") addField("Имя", "name", "text", "name", 100);
+  if (mode === "factor" || mode === "recovery") {
+    addField(mode === "factor" ? "Код из приложения" : "Код восстановления", "code", "text", "one-time-code", mode === "factor" ? 8 : 40);
+    if (mode === "factor") fields.querySelector("input").inputMode = "numeric";
+  }
   if (["register", "login", "forgot", "resend"].includes(mode)) addField("Email", "email", "email", "email", 254);
   if (["register", "login", "reset"].includes(mode)) {
     addField("Пароль", "password", "password", mode === "login" ? "current-password" : "new-password", 128, 10);
@@ -41,6 +47,8 @@ function showAccount(mode) {
   }
   const actions = mode === "login"
     ? [["Создать аккаунт", "register"], ["Забыли пароль?", "forgot"], ["Отправить подтверждение снова", "resend"]]
+    : mode === "factor" ? [["Использовать код восстановления", "recovery"], ["Вернуться ко входу", "login"]]
+    : mode === "recovery" ? [["Код из приложения", "factor"], ["Вернуться ко входу", "login"]]
     : [["Вернуться ко входу", "login"]];
   section("account-links").replaceChildren(...actions.map(([label, next]) =>
     button("account-link", label, () => showAccount(next))));
@@ -53,8 +61,13 @@ async function submitAccount(data) {
   const message = section("account-message");
   message.hidden = true;
   try {
-    if (mode === "login") {
-      const session = await api("/api/account/login", jsonRequest("POST", data));
+    if (mode === "login" || mode === "factor" || mode === "recovery") {
+      const session = mode === "login" ? await api("/api/account/login", jsonRequest("POST", data))
+        : await api("/api/account/login/factor", jsonRequest("POST", { code: data.code, recovery: mode === "recovery" }));
+      if (session.requiresTwoFactor) {
+        showAccount("factor");
+        return;
+      }
       section("account-dialog").close();
       await enterSession(session);
       return;
@@ -83,6 +96,9 @@ function renderAccountControls() {
   section("account-button").hidden = !session || session.isDemo;
   section("account-button").textContent = session?.isAccount ? "Выйти" : "Войти";
   section("account-button").disabled = busy;
+  section("p3-new-room").disabled = busy || !session?.isAccount && !session?.isDemo;
+  section("account-security-button").hidden = !session?.isAccount;
+  section("account-security-button").disabled = busy;
   section("create-organization").hidden = !session?.isAccount || !state.organizations.length;
   section("create-organization").disabled = busy;
   section("organization-form").querySelector('[type="submit"]').disabled = busy;
@@ -108,7 +124,7 @@ function renderTeam(team) {
     return item;
   };
   section("team-members").replaceChildren(...team.members.map(item =>
-    row(item.displayName, item.email, item.role === "admin" ? "Администратор" : "Участник")));
+    row(item.displayName, item.email, organizationRoleLabel(item.role))));
   section("team-invitations").replaceChildren(...(team.invitations.length ? team.invitations.map(item =>
     row(item.email, "", `До ${appointmentTime(item.expiresAt)}`))
     : [element("p", "list-empty", "Приглашений без ответа нет.")]));
@@ -160,14 +176,22 @@ function bindAccounts() {
   section("team-invite-form").addEventListener("submit", event => {
     event.preventDefault();
     const form = event.currentTarget;
-    const data = Object.fromEntries(new FormData(form));
+    const emails = form.elements.emails.value.split("\n").map(email => email.trim()).filter(Boolean);
     const message = section("team-message");
+    const results = section("team-invite-results");
     run(async () => {
       message.hidden = true;
+      results.replaceChildren();
       try {
-        await api("/api/team/invitations", jsonRequest("POST", data));
-        form.reset();
-        message.textContent = "Письмо отправлено.";
+        const delivery = await api("/api/team/invitations/batch", jsonRequest("POST", { emails }));
+        const labels = { sent: "Отправлено", member: "Уже в команде", pending: "Ожидает ответа", failed: "Повторите отправку" };
+        results.replaceChildren(...delivery.map(item => {
+          const row = element("li", "", item.email);
+          row.append(element("span", item.status === "failed" ? "error" : "", labels[item.status]));
+          return row;
+        }));
+        form.elements.emails.value = delivery.filter(item => item.status === "failed").map(item => item.email).join("\n");
+        message.textContent = `Отправлено писем: ${delivery.filter(item => item.status === "sent").length}.`;
         message.classList.remove("error");
         message.hidden = false;
         await loadWorkspace();

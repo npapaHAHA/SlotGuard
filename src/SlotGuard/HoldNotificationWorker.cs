@@ -84,14 +84,14 @@ internal sealed class HoldNotificationWorker(
     {
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<BookingDb>();
-        var slot = await db.Bookings.AsNoTracking().Where(booking => booking.Id == message.BookingId)
-            .Select(booking => (SlotKey?)new SlotKey(booking.ResourceId, booking.StartUtc))
+        var resourceId = await db.Bookings.AsNoTracking().Where(booking => booking.Id == message.BookingId)
+            .Select(booking => booking.ResourceId)
             .SingleOrDefaultAsync(ct);
-        if (slot is not { } key)
+        if (resourceId is null)
             return;
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        await SlotLock.Acquire(db, key, ct);
+        await ResourceBookingLock.Acquire(db, resourceId, ct);
         var now = clock.GetUtcNow();
         await db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "HoldNotifications" ("EventId", "BookingId", "DeliveredAt")

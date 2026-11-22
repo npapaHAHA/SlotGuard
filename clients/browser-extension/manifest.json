@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "SlotGuard Companion",
+  "version": "1.0.0",
+  "description": "Календарь, публичные площадки и часовые пояса SlotGuard",
+  "permissions": ["storage"],
+  "action": { "default_title": "SlotGuard", "default_popup": "popup.html" }
+}

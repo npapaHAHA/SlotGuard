@@ -21,27 +21,67 @@ builder.Services.AddOptions<WaitlistOptions>()
     .ValidateOnStart();
 builder.Services.AddScoped<SlotBookings>();
 builder.Services.AddScoped<OrganizationScope>();
+builder.Services.AddScoped<AccountSecurity>();
+builder.Services.AddScoped<ExternalApiAccess>();
+builder.Services.AddHttpClient<WebhookTransport>(client => client.Timeout = TimeSpan.FromSeconds(8))
+    .ConfigurePrimaryHttpMessageHandler(services => WebhookTransport.Handler(WebhookTransport.LocalEnabled(
+        services.GetRequiredService<IWebHostEnvironment>(), services.GetRequiredService<IConfiguration>())))
+    .RemoveAllLoggers();
+builder.Services.AddHostedService<WebhookWorker>();
 builder.Services.AddIdentityCore<Account>(options =>
     {
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedEmail = true;
         options.Password.RequiredLength = 10;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     })
     .AddEntityFrameworkStores<BookingDb>()
     .AddClaimsPrincipalFactory<AccountPrincipalFactory>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 builder.Services.AddOptions<WorkspaceMailOptions>().BindConfiguration("Mail");
-builder.Services.AddScoped<IWorkspaceMail, SmtpWorkspaceMail>();
+builder.Services.AddOptions<GoogleCalendarOptions>().BindConfiguration("GoogleCalendar");
+builder.Services.AddHttpClient<GoogleCalendarClient>(client => client.Timeout = TimeSpan.FromSeconds(10)).RemoveAllLoggers();
+builder.Services.AddMemoryCache();
+builder.Services.AddHostedService<GoogleCalendarWorker>();
+builder.Services.AddScoped<SmtpWorkspaceMail>();
+builder.Services.AddScoped<IWorkspaceMail>(services => services.GetRequiredService<SmtpWorkspaceMail>());
+builder.Services.AddScoped<IBookingMail>(services => services.GetRequiredService<SmtpWorkspaceMail>());
+builder.Services.AddSingleton<BookingManagementTokens>();
+builder.Services.AddSingleton<PrivateLinkVerification>();
+builder.Services.AddSingleton<EmbedSessions>();
+builder.Services.AddHostedService<BookingEmailWorker>();
+builder.Services.AddHostedService<EventMailWorker>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
+    options.OnRejected = (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var wait))
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds))
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return ValueTask.CompletedTask;
+    };
     options.AddPolicy("account", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "local",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy("public-booking", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy("public-form", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 12, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy("external-api", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 180, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy("private-link-email", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 6, Window = TimeSpan.FromMinutes(1) }));
 });
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<CalendarUpdates>();
+builder.Services.AddSingleton<MeetingRooms>();
 builder.Services.AddHostedService<HoldExpirationWorker>();
 builder.Services.AddOptions<RabbitMqOptions>()
     .BindConfiguration("RabbitMq")
@@ -61,15 +101,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.SameSite = SameSiteMode.Strict;
         options.Events.OnValidatePrincipal = async context =>
         {
-            var services = context.HttpContext.RequestServices;
             if (AccountSessions.IsAccount(context.Principal))
-            {
-                services.GetRequiredService<SignInManager<Account>>().AuthenticationScheme =
-                    CookieAuthenticationDefaults.AuthenticationScheme;
-                await SecurityStampValidator.ValidatePrincipalAsync(context);
-            }
+                await AccountSessions.ValidateCookie(context);
             else if (context.Principal?.Identity?.Name is not null
-                && string.IsNullOrEmpty(services.GetRequiredService<IConfiguration>()["DemoAccounts:Password"]))
+                && string.IsNullOrEmpty(context.HttpContext.RequestServices.GetRequiredService<IConfiguration>()["DemoAccounts:Password"]))
                 context.RejectPrincipal();
         };
         options.Events.OnRedirectToLogin = context =>
@@ -82,10 +117,21 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return Task.CompletedTask;
         };
+    })
+    .AddCookie(PublicBookingEndpoints.GuestScheme, options =>
+    {
+        options.Cookie.Name = "SlotGuard.Public";
+        options.Cookie.Path = "/api/public";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
     });
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+{
+    ExternalApiEndpoints.DescribeExternalApi(document);
+    return Task.CompletedTask;
+}));
 
 var protection = builder.Services.AddDataProtection().SetApplicationName("SlotGuard");
 if (builder.Configuration["DataProtection:KeyDirectory"] is { Length: > 0 } keyDirectory)
@@ -100,6 +146,7 @@ app.UseExceptionHandler();
 app.Use(async (context, next) =>
 {
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers.ContentSecurityPolicy = "frame-ancestors 'none'";
     await next();
 });
 app.UseDefaultFiles();
@@ -109,7 +156,16 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.MapOpenApi();
 app.MapBookingEndpoints();
+app.MapExternalApi();
+app.MapPublicBookings();
+app.MapEvents();
+app.MapDiscover();
+app.MapSlotGuardMcp();
+app.MapEmbeds();
+app.MapBookingManagement();
 app.MapAccountEndpoints();
+app.MapGoogleCalendarCallback();
+MeetingRooms.Map(app);
 app.MapHub<CalendarHub>("/hubs/calendar", options => options.CloseOnAuthenticationExpiration = true)
     .RequireAuthorization();
 app.Run();

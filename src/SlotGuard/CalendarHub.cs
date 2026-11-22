@@ -24,11 +24,11 @@ internal sealed class CalendarUpdates(IHubContext<CalendarHub> hub, ILogger<Cale
 {
     public static string Group(string organizationId) => $"calendar:{organizationId}";
 
-    public async Task Publish(string organizationId)
+    public async Task Publish(string organizationId, string notification = "CalendarChanged")
     {
         try
         {
-            await hub.Clients.Group(Group(organizationId)).SendAsync("CalendarChanged");
+            await hub.Clients.Group(Group(organizationId)).SendAsync(notification);
         }
         catch (Exception error)
         {

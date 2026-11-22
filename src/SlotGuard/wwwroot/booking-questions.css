@@ -1,0 +1,30 @@
+.booking-question-dialog {
+  width: min(540px, calc(100% - 24px)); max-height: calc(100dvh - 24px);
+  padding: clamp(16px, 4vw, 26px); border: 1px solid #dbe4d8; border-radius: 20px;
+}
+.booking-question-dialog h2 { margin: 0; font-size: clamp(23px, 6vw, 28px); letter-spacing: -.035em; }
+.booking-question-dialog header p, .question-editor-empty { margin: 5px 0 0; color: var(--subtle); font-size: 13px; }
+.booking-question-dialog .workspace-form { gap: 12px; margin-top: 13px; }
+.booking-question-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.booking-question-fields { display: grid; gap: 10px; }
+.booking-question-fields > strong { font-size: 14px; }
+.booking-question-fields label { display: grid; gap: 4px; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.booking-question-fields small { color: var(--subtle); font-size: 11px; font-weight: 400; }
+.booking-question-fields textarea {
+  width: 100%; min-height: 53px; resize: vertical; padding: 8px 9px;
+  color: var(--ink); background: #fff; border: 1px solid #d7e0d3; border-radius: 7px; font: inherit; font-weight: 400;
+}
+.public-time-form .booking-question-fields, #public-booking-questions { margin-top: 14px; }
+.booking-question-dialog [data-fields] > strong { display: none; }
+.question-editor-fields { display: grid; gap: 8px; }
+.question-editor-fields:empty { display: none; }
+.question-editor-fields fieldset {
+  min-width: 0; margin: 0; padding: 10px; background: #f6f9f3; border: 1px solid #dfe8db; border-radius: 8px;
+}
+.question-editor-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+.question-editor-controls .outline-action { min-height: 29px; }
+.booking-answers { display: grid; gap: 9px; margin: 10px 0; }
+.booking-answers > div { padding: 9px 11px; border: 1px solid #dfe8db; border-radius: 8px; background: #f6f9f3; color: var(--ink); }
+.booking-answers dt { font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
+.booking-answers dd { margin: 4px 0 0; font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.approval-answers-title { margin-top: 14px; font-size: 14px; }

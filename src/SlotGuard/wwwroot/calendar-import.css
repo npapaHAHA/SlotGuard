@@ -1,0 +1,16 @@
+.calendar-import-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.calendar-import-grid fieldset { display: grid; gap: 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.calendar-import-hint { color: var(--subtle); font-size: 12px; line-height: 1.5; }
+.calendar-import-results { margin-top: 16px; min-width: 0; }
+.calendar-import-results .section-heading { flex-wrap: wrap; margin-bottom: 12px; }
+.calendar-import-results td:first-child { overflow-wrap: anywhere; max-width: 220px; }
+.calendar-import-results td:nth-child(2) { min-width: 145px; white-space: normal; }
+.calendar-import-results .pill { white-space: normal; }
+@media (max-width: 760px) {
+  .calendar-import-grid { grid-template-columns: minmax(0, 1fr); }
+}

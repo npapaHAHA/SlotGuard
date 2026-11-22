@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><title>SlotGuard</title>
+<style>
+  body{font:14px system-ui,sans-serif;min-width:240px;margin:14px;color:#183528;background:#f4f8f1}
+  form,nav,label{display:grid;gap:8px} input,button,a{padding:7px;border:1px solid #bdd0ba;border-radius:7px;color:inherit;background:white}
+  nav{margin-bottom:12px} a{text-decoration:none} p{min-height:1.2em}
+</style>
+<h1>SlotGuard</h1>
+<nav><a data-path="/#calendar" target="_blank" rel="noopener">Календарь</a>
+  <a data-path="/discover" target="_blank" rel="noopener">Площадки и события</a>
+  <a data-path="/#p3" target="_blank" rel="noopener">Помощник и встречи</a>
+  <a data-path="/time-tools.html" target="_blank" rel="noopener">Часовые пояса</a></nav>
+<form id="settings"><label>Адрес SlotGuard<input name="address" type="url" required></label><button type="submit">Сохранить</button></form>
+<p id="status" role="status"></p><script src="popup.js"></script>

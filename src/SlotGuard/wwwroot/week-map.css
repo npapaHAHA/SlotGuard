@@ -1,0 +1,61 @@
+.week-scene-stage { height: 245px; display: grid; place-items: center; perspective: 600px; min-width: 0; }
+.week-scene-plane {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 18px repeat(var(--scene-rows, 5), minmax(0, 1fr));
+  width: min(82%, 310px);
+  aspect-ratio: 7 / 5;
+  gap: var(--scene-row-gap, 3px) 3px;
+  padding: 7px;
+  background: #395448;
+  border: 1px solid #637e70;
+  border-radius: 5px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--scene-angle, 52deg) + var(--scene-pitch, 0deg))) rotateZ(calc(var(--scene-yaw, -21deg) + var(--scene-roll, 0deg)));
+  transition: transform 270ms var(--action-ease);
+}
+.week-scene-day { grid-row: 1; justify-self: center; color: #edf6ec; font-size: 11px; }
+.week-scene-plane::before, .week-scene-plane::after { content: ""; position: absolute; pointer-events: none; }
+.week-scene-plane::before {
+  top: 100%; left: 0; width: 100%; height: 12px;
+  background: #294538; transform-origin: top; transform: rotateX(-90deg);
+}
+.week-scene-plane::after {
+  left: 100%; top: 0; width: 12px; height: 100%;
+  background: #192e25; transform-origin: left; transform: rotateY(90deg);
+}
+.week-voxel {
+  --rise: 2px;
+  --top: #789c83;
+  --side: #42644f;
+  position: relative;
+  background: var(--top);
+  border-radius: 2px 2px 0 0;
+  transform: translateZ(var(--rise));
+  transform-style: preserve-3d;
+  transition: transform 200ms var(--action-ease), background-color 160ms var(--action-ease);
+  cursor: pointer;
+}
+.week-voxel::before, .week-voxel::after { content: ""; position: absolute; background: var(--side); }
+.week-voxel::before { top: 100%; left: 0; height: var(--rise); width: 100%; transform-origin: top; transform: rotateX(-90deg); }
+.week-voxel::after { left: 100%; top: 0; width: var(--rise); height: 100%; transform-origin: left; transform: rotateY(90deg); filter: brightness(.8); }
+.week-voxel.past { --rise: 1px; --top: #536e5f; --side: #395246; }
+.week-voxel.booked { --rise: 11px; --top: #b97861; --side: #784b3d; }
+.week-voxel.mine { --rise: 12px; --top: #a3c365; --side: #6c883f; }
+.week-voxel.held { --rise: 7px; --top: #d6ad6d; --side: #997541; }
+.week-voxel.pending { --rise: 6px; --top: #9bb7d2; --side: #5f7d97; }
+.week-voxel.maintenance { --rise: 5px; --top: #a492c2; --side: #705e8d; }
+.week-voxel.external { --rise: 9px; --top: #889ec4; --side: #506788; }
+.week-voxel.group { --rise: 10px; --top: #78b9b1; --side: #437e73; }
+.week-voxel.restricted { --rise: 1px; --top: #988b73; --side: #625644; }
+.week-voxel:hover { outline: 1px solid #eef8e7; }
+.week-voxel.selected { --rise: 18px; --top: #e4fcab; --side: #8bab59; }
+.week-scene-stage.flat .week-scene-plane { transform: none; width: min(100%, 285px); }
+.week-scene-stage.flat .week-voxel { transform: none; }
+.week-scene-stage.flat :is(.week-scene-plane, .week-voxel)::before,
+.week-scene-stage.flat :is(.week-scene-plane, .week-voxel)::after { visibility: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .week-scene-plane, .week-voxel { transition: none; }
+}

@@ -1,0 +1,23 @@
+.embed-settings-dialog { width: min(770px, calc(100% - 26px)); max-height: 91vh; overflow: auto; }
+.embed-setting-fields, .embed-setting-code { display: grid; gap: 10px; }
+.embed-setting-code { padding-top: 10px; border-top: 1px solid var(--border); }
+.embed-setting-help { color: var(--subtle); font-size: 12px; line-height: 1.5; }
+.embed-setting-fields textarea {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+  background: #f8faf5;
+  font: 12px/1.45 ui-monospace, monospace;
+}
+.embed-setting-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.embed-setting-code iframe {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 8px;
+}
+.embed-setting-code summary { cursor: pointer; font-size: 13px; font-weight: 680; }

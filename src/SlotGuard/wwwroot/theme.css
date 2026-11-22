@@ -1,0 +1,272 @@
+:root {
+  color-scheme: light;
+  --surface: #eef3ec;
+  --panel: #fcfdf9;
+  --panel-tint: #f1f6ee;
+  --field: #f7f9f5;
+  --soft: #e5eee0;
+  --ink: #172720;
+  --subtle: #4e6257;
+  --border: #d7e3d8;
+  --line-strong: #a6bbae;
+  --accent: #28513d;
+  --accent-dark: #193c2b;
+  --on-accent: #fff;
+  --sidebar-surface: #172720;
+  --lime: #ddf795;
+  --lime-ink: #172720;
+  --green-bg: #eaf3e6;
+  --green-text: #2d5539;
+  --owned-bg: #e4efce;
+  --amber-bg: #faf0da;
+  --amber-text: #6c481b;
+  --red-bg: #fbede6;
+  --red-text: #823d25;
+  --blue-bg: #e9f0f8;
+  --blue-text: #315979;
+  --violet-bg: #eee8f6;
+  --violet-text: #564174;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #101a17;
+  --panel: #182621;
+  --panel-tint: #1c2e27;
+  --field: #131f1b;
+  --soft: #253c31;
+  --ink: #edf5ee;
+  --subtle: #aec4b6;
+  --border: #344b41;
+  --line-strong: #638471;
+  --accent: #cfe99f;
+  --accent-dark: #e5f7c6;
+  --on-accent: #172720;
+  --sidebar-surface: #0c1612;
+  --green-bg: #213d2e;
+  --green-text: #bde7b3;
+  --owned-bg: #354626;
+  --amber-bg: #3c2e1f;
+  --amber-text: #f6d49c;
+  --red-bg: #402a25;
+  --red-text: #ffbfaa;
+  --blue-bg: #203347;
+  --blue-text: #bddcfc;
+  --violet-bg: #372c48;
+  --violet-text: #dac1f9;
+}
+
+.theme-header, .theme-header-actions { display: flex; align-items: center; gap: 10px; }
+.theme-header { justify-content: space-between; }
+.theme-header-actions { flex-wrap: wrap; }
+.theme-toggle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.theme-toggle:hover { background: var(--soft); border-color: var(--line-strong); }
+.theme-toggle::before { content: "☾"; font: 21px/1 "Segoe UI Symbol", system-ui, sans-serif; }
+.theme-toggle[aria-pressed="true"]::before { content: "☼"; }
+
+.panel, .skip-link { background: var(--panel); }
+.topbar, .calendar-header, .p3-bar { background: var(--panel); border-color: var(--border); }
+.public-body, .p3-public { background: var(--surface); }
+.public-body { --public-forest: var(--ink); --public-paper: var(--panel); }
+:is(.public-header, .public-resource, .public-calendar, .public-time-panel) { border-color: var(--border); }
+.public-header, .public-layout, .public-state { background: var(--panel); border-color: var(--border); }
+:is(.page-action, .button.primary) { color: var(--on-accent); }
+.outline-action, .icon-button, .resource { background: var(--panel); color: var(--ink); }
+.outline-action { color: var(--accent-dark); }
+:is(.outline-action, .icon-button):hover:not(:disabled), .listing .data-row:hover { background: var(--soft); }
+.icon-button:disabled { background: var(--panel-tint); color: var(--subtle); }
+:is(.search-fields, .search-filter-fields, .workspace-form) :is(input:not([type="checkbox"], [type="radio"]), select, textarea),
+:is(.topbar .organization-controls select, .login-form select, .login-form input, .calendar-search,
+  .display-zone select, .duration-bar select, .public-email input, .maintenance-form input),
+.booking-question-fields textarea, .embed-setting-fields textarea, #resource-search {
+  background: var(--field);
+  border-color: var(--border);
+  color: var(--ink);
+}
+::placeholder { color: var(--subtle); opacity: 1; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+:is(.calendar-picker-panel, .public-month-nav button, .public-time, .public-alternatives button,
+  .filter-chips .chip-check, .search-result-no-exact, .mobile-day, .flexible-slots .day-heading) {
+  background: var(--panel);
+  border-color: var(--border);
+}
+.public-month-nav button:disabled, .public-submit:disabled { background: var(--panel-tint); border-color: var(--border); color: var(--subtle); }
+:is(.calendar-picker[open] summary, .segment, .guest, .calendar-list-day .calendar-day-title, .calendar-month-day,
+  .search-filter-fields, .search-filter-panel[open] summary, .resource-selection, .available-tags li,
+  .available-time-shift, .slot-resource, .button.secondary, .p3-ticket) { background: var(--panel-tint); border-color: var(--border); }
+:is(.resource-icon, .calendar-month-count.free, .segment button[aria-pressed="true"], .team-avatar,
+  .available-icon, .availability-empty .symbol, .search-result-group[data-kind="alternative"] .search-result-heading > .symbol,
+  .selection-heading > .symbol, .selection-resource-label > .symbol, .search-filter-chip, .result-count) { background: var(--soft); }
+:is(.resource[aria-pressed="true"], .calendar-list-day[data-active="true"] .calendar-day-title, .bundle-pick[aria-pressed="true"]) {
+  background: var(--soft);
+  border-color: var(--line-strong);
+}
+:is(.button.secondary, .search-filter-chip, .bundle-pick[aria-pressed="true"]):hover:not(:disabled) { background: var(--soft); border-color: var(--line-strong); }
+.calendar-month-day:disabled { background: var(--panel-tint); color: var(--subtle); }
+:is(.calendar-view button, .calendar-month-day, .mobile-day, .calendar-scroll .slot.available, .calendar-month-times .slot.available)[aria-pressed="true"],
+.chip-check:has(input:checked) {
+  background: var(--lime);
+  color: var(--lime-ink);
+}
+.chip-check:has(input:checked) input { accent-color: var(--lime-ink); }
+:is(.calendar-scroll, .calendar-month-times) .slot[aria-pressed="true"] { border-color: var(--line-strong); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.calendar-month-day[aria-pressed="true"] .calendar-month-count { color: var(--lime-ink); }
+.calendar-scroll .day.current .day-number { color: var(--lime-ink); }
+.search-result-group[data-kind="exact"] { background: var(--panel-tint); border-color: var(--line-strong); }
+.search-result-group[data-kind="alternative"] { background: var(--surface); border-color: var(--border); }
+.search-result-group[data-kind="exact"] .available-card { border-color: var(--border); border-inline-start-color: var(--line-strong); }
+.search-result-group[data-kind="alternative"] .available-icon { background: var(--panel-tint); }
+.result-count { color: var(--green-text); }
+.selection-panel { background: var(--panel-tint); border-color: var(--border); }
+.welcome { background: radial-gradient(ellipse at 100% 0, var(--soft), transparent 52%), var(--panel); }
+
+/* Booking states retain distinct foregrounds and surfaces in both themes. */
+:is(.slot, .pill).available,
+:is(.calendar-feedback, .availability-message)[data-tone="success"], .live-status[data-connected="true"],
+.slot-diagnosis[data-code="available"] { background: var(--green-bg); color: var(--green-text); }
+:is(.slot, .pill).mine { background: var(--owned-bg); color: var(--green-text); }
+:is(.slot, .pill).booked, .notice,
+:is(.calendar-feedback, .availability-message)[data-tone="error"] { background: var(--red-bg); color: var(--red-text); }
+:is(.slot, .pill):is(.held, .restricted), .slot-diagnosis, .public-message,
+.public-body .public-receipt[data-tone="waiting"] .public-receipt-icon,
+.availability-message[data-tone="changed"], .calendar-feedback[data-tone="conflict"] { background: var(--amber-bg); color: var(--amber-text); }
+:is(.slot, .pill):is(.pending, .external), .public-policy, .available-tags .approval-caption,
+.calendar-feedback[data-tone="review"] { background: var(--blue-bg); color: var(--blue-text); }
+:is(.slot, .pill):is(.maintenance, .group) { background: var(--violet-bg); color: var(--violet-text); }
+:is(.slot, .pill).past { background: var(--panel-tint); color: var(--subtle); }
+.calendar-feedback[data-tone="pending"], .live-status:not([data-connected="true"]) {
+  background: var(--soft); color: var(--subtle);
+}
+:is(.notice, .slot-diagnosis, .availability-message, .calendar-feedback) { border-color: var(--border); }
+:is(.form-message.error, .login-error) { color: var(--red-text); }
+.form-message:not(.error) { color: var(--green-text); }
+
+.public-body:not([data-palette]) :is(.public-day:not(:disabled), .public-equipment li) { background: var(--soft); }
+.public-day:disabled { color: var(--subtle); }
+.public-pin { border-color: var(--subtle); }
+:is(.public-day, .public-time):hover:not(:disabled):not([aria-pressed="true"]),
+.public-alternatives button:hover:not(:disabled) { background: var(--soft); border-color: var(--line-strong); }
+.booking-palette[data-palette] :is(.public-day, .public-time)[aria-pressed="true"] { color: var(--lime-ink); }
+.public-body .public-receipt[data-tone="success"] .public-receipt-icon { color: var(--lime-ink); }
+:is(.public-checkout, .public-payment) { background: var(--brand-header, var(--panel-tint)); border-color: var(--brand-border, var(--border)); }
+
+.stat-tile { background: var(--panel); }
+.stat-free { background: var(--panel-tint); border-color: var(--border); }
+:is(.stat-icon, .empty-symbol, .analytics-icon, .template-card-heading > .symbol) { background: var(--soft); color: var(--accent); }
+.stat-booked .stat-icon { background: var(--green-bg); color: var(--green-text); }
+.stat-held .stat-icon { background: var(--amber-bg); color: var(--amber-text); }
+.stat-maintenance .stat-icon { background: var(--violet-bg); color: var(--violet-text); }
+:is(.next-booking, .analytics-day-readout, .analytics-outcomes > div, .analytics-point:hover,
+  .group-seat-receipt, .group-roster-count, .group-selection-count, .manage-time, .reschedule-current,
+  .weekly-date, .question-editor-fields fieldset, .booking-answers > div, .template-card, .template-tags span,
+  .template-lock-note, .template-schedule-preview, .integration-event-list .chip-check, .approval-routing,
+  .invite-banner, .security-key, .security-recovery-codes) {
+  background: var(--panel-tint);
+  border-color: var(--border);
+}
+.group-session-card[aria-pressed="true"], .wizard-purpose-options label:has(input:checked),
+.analytics-point[aria-pressed="true"], .template-tags .template-lock-tag { background: var(--soft); border-color: var(--line-strong); }
+.wizard-purpose-options label, .wizard-form #wizard-people-label input { background: var(--field); }
+.wizard-stages li { background: var(--soft); }
+.wizard-stages li[aria-current="step"] { background: var(--lime); color: var(--lime-ink); }
+:is(.manage-card, .weekly-dialog, .reschedule-dialog, .slot-diagnostics, .booking-question-dialog) { border-color: var(--border); }
+.manage-time .symbol { color: var(--accent); }
+.manage-details #manage-message.error, .manage-actions .manage-cancel, .template-conflicts { color: var(--red-text); }
+.seat-badge.cancelled { background: var(--soft); color: var(--subtle); }
+.seat-badge.confirmed, .weekly-date-status { color: var(--green-text); }
+.seat-badge.confirmed { background: var(--green-bg); }
+.weekly-date-conflict { background: var(--amber-bg); border-color: var(--border); }
+.weekly-date-conflict .weekly-date-status, .reschedule-approval { color: var(--amber-text); }
+:is(.reschedule-time, .public-series-receipts .outline-action)[aria-pressed="true"] {
+  color: var(--lime-ink);
+  background: var(--lime);
+  border-color: var(--line-strong);
+}
+.group-seats-meter progress, .analytics-stage progress { background: var(--soft); }
+.group-seats-meter progress::-webkit-progress-bar, .analytics-stage progress::-webkit-progress-bar { background: var(--soft); }
+.analytics-key::before, .analytics-bar { background: var(--soft); }
+.analytics-key.booked::before, .analytics-bar-fill { background: var(--line-strong); }
+.analytics-heatmap td { background: var(--panel-tint); color: var(--subtle); }
+.analytics-heatmap td[data-level="1"] { background: var(--green-bg); color: var(--green-text); }
+.chart-day { color: var(--ink); }
+.template-tags span:not(.template-lock-tag), .template-origin, .invite-banner p, #account-fields small { color: var(--subtle); }
+.team-invite-results .error { color: var(--red-text); }
+.approval-inbox, .approval-detail, .approval-row { background: var(--panel); }
+.approval-row:hover { background: var(--panel-tint); }
+.approval-row[aria-pressed="true"] { background: var(--blue-bg); border-color: var(--line-strong); }
+.approval-row time { color: var(--blue-text); }
+.approval-message, .pill.approved { background: var(--green-bg); color: var(--green-text); }
+.approval-message.error, .pill.rejected { background: var(--red-bg); color: var(--red-text); }
+.approval-message, .approval-message.error { border-color: var(--border); }
+.decision-note { background: var(--panel-tint); border-color: var(--line-strong); }
+.decision-note-rejected { background: var(--red-bg); border-color: var(--red-text); }
+
+.branding-example { background: var(--panel); border-color: var(--brand-border); }
+.branding-example-times span:first-child { color: var(--lime-ink); }
+.branding-example-action { color: var(--on-accent); }
+
+:root[data-theme="dark"] .booking-palette {
+  --brand-field: #111d18;
+  --brand-header: #1c2d25;
+  --brand-accent: #cbe997;
+  --brand-strong: #e3f6c2;
+  --brand-soft: #263e31;
+  --brand-border: #3a5145;
+}
+:root[data-theme="dark"] .booking-palette[data-palette="ocean"] {
+  --brand-field: #111b29;
+  --brand-header: #1b293a;
+  --brand-accent: #9ec7fb;
+  --brand-strong: #d5e8ff;
+  --brand-soft: #233c56;
+  --brand-border: #3d536b;
+}
+:root[data-theme="dark"] .booking-palette[data-palette="plum"] {
+  --brand-field: #201822;
+  --brand-header: #2c2130;
+  --brand-accent: #e7b7de;
+  --brand-strong: #f6d9ef;
+  --brand-soft: #453047;
+  --brand-border: #5a445e;
+}
+:root[data-theme="dark"] .booking-palette[data-palette="graphite"] {
+  --brand-field: #181b20;
+  --brand-header: #262b32;
+  --brand-accent: #c4cedd;
+  --brand-strong: #e6ebf3;
+  --brand-soft: #313c49;
+  --brand-border: #47525f;
+}
+:root[data-theme="dark"] .public-body.booking-palette {
+  --panel: var(--brand-header);
+  --panel-tint: var(--brand-soft);
+  --field: var(--brand-field);
+  --border: var(--brand-border);
+  --soft: var(--brand-soft);
+  --line-strong: var(--brand-accent);
+}
+:root[data-theme="dark"] .booking-palette :is(.public-layout, .public-state, .branding-example) {
+  background: var(--brand-field);
+  border-color: var(--brand-border);
+}
+:root[data-theme="dark"] .booking-palette .public-media {
+  color: var(--brand-accent);
+  background: radial-gradient(ellipse at 80% 10%, var(--brand-soft), transparent 72%), var(--brand-header);
+}
+:root[data-theme="dark"] .public-body.embed-mode { background: var(--brand-field, var(--surface)); }
+
+@media (prefers-reduced-motion: reduce) { .theme-toggle { transition: none; } }
