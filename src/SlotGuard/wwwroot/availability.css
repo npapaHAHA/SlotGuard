@@ -27,7 +27,7 @@
 .search-chevron { width: 7px; height: 7px; margin-left: 3px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-1.5px) rotate(45deg); }
 .search-filter-panel[open] .search-chevron { transform: translateY(1.5px) rotate(225deg); }
 #availability-filter-count {
-  min-width: 19px; padding: 2px 5px; border-radius: 99px; background: var(--lime); color: #172720;
+  min-width: 19px; padding: 2px 5px; border-radius: 99px; background: var(--selection); color: var(--on-selection);
   text-align: center; font-size: 11px; line-height: 1.4; font-variant-numeric: tabular-nums;
 }
 .search-filter-fields {
@@ -43,7 +43,6 @@
   border: 1px solid var(--border); border-radius: 8px; background: #fff; font-weight: 550; overflow-wrap: anywhere; cursor: pointer;
 }
 .chip-check input { flex: none; margin: 0; accent-color: var(--accent); }
-.chip-check:has(input:checked) { background: var(--lime); border-color: #a6be92; color: var(--accent-dark); }
 .chip-check:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
 .search-active-filters, #availability-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 .search-active-filters { gap: 6px 12px; }
@@ -83,7 +82,7 @@
 .search-result-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .search-result-heading > .symbol {
   display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
-  color: #172720; background: var(--lime);
+  color: var(--on-selection); background: var(--selection);
 }
 .search-result-group[data-kind="alternative"] .search-result-heading > .symbol { background: #e8ede6; color: var(--subtle); }
 .search-result-heading-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 7px; min-width: 0; }

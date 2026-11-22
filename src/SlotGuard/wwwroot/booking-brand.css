@@ -47,7 +47,7 @@
 .booking-palette[data-palette] :is(.public-day, .public-time)[aria-pressed="true"] {
   background: var(--brand-selected);
   border-color: var(--brand-accent);
-  color: var(--brand-strong);
+  color: var(--brand-on-selected, var(--brand-strong));
 }
 .public-header .brand, .public-embed-footer > span { overflow-wrap: anywhere; min-width: 0; }
 .public-header .brand-icon, .public-embed-footer img { object-fit: contain; flex-shrink: 0; }

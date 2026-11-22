@@ -78,7 +78,7 @@
   width: 4px; height: 4px; border-radius: 50%; background: currentColor;
 }
 .public-day[aria-pressed="true"], .public-time[aria-pressed="true"] {
-  background: var(--lime); color: #1c3427; border-color: #8ea968;
+  background: var(--selection); color: var(--on-selection); border-color: var(--selection);
 }
 .public-slot-date { font-size: 14px; font-weight: 650; line-height: 1.4; margin-top: 14px; }
 .public-duration { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: var(--subtle); font-size: 13px; }
@@ -136,7 +136,7 @@
   background: #e3eedb; color: var(--accent-dark); font-size: 23px;
 }
 .public-body .public-receipt[data-tone="waiting"] .public-receipt-icon { background: #faf0db; color: #634c27; }
-.public-body .public-receipt[data-tone="success"] .public-receipt-icon { background: var(--brand-selected, var(--lime)); color: var(--accent-dark); }
+.public-body .public-receipt[data-tone="success"] .public-receipt-icon { background: var(--brand-selected, var(--selection)); color: var(--brand-on-selected, var(--brand-strong, var(--on-selection))); }
 .public-receipt h3 { font-size: 18px; letter-spacing: -.025em; }
 .public-receipt p { font-size: 14px; color: var(--subtle); line-height: 1.45; overflow-wrap: anywhere; }
 .public-receipt .outline-action { justify-self: start; min-height: 35px; }

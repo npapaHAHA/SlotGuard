@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#eef3ec">
+  <meta name="theme-color" content="#fafafb">
   <meta name="description" content="Интерактивная демонстрация SlotGuard. Выберите время на 3D-карте недели и проверьте, как решается конфликт бронирования.">
   <title>SlotGuard — интерактивное демо</title>
   <link rel="icon" href="/design/slotguard-mark.svg" type="image/svg+xml">
@@ -35,76 +35,79 @@
 
   <main class="landing-width">
     <section class="landing-hero" aria-labelledby="landing-title">
-      <h1 id="landing-title">Бронирование<br>общих ресурсов</h1>
-      <div class="landing-hero-copy">
-        <p>Выберите время на 3D-карте и проверьте, что происходит, когда два человека бронируют один слот.</p>
-        <a href="#interview-demo" class="page-action">Попробовать сценарий <span aria-hidden="true">↓</span></a>
+      <h1 id="landing-title">У каждого ресурса<br>своё время</h1>
+      <p>Бронируйте переговорные, студии и оборудование. В демо два участника попробуют занять один слот.</p>
+      <div class="landing-hero-actions">
+        <a href="#interview-demo" class="page-action">Попробовать демо <span aria-hidden="true">↓</span></a>
+        <a href="/#calendar" class="outline-action">Открыть календарь <span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
-    <section id="interview-demo" class="landing-demo" aria-labelledby="interview-demo-title">
-      <div class="landing-demo-header">
-        <div class="landing-resource">
-          <span class="landing-resource-icon symbol" aria-hidden="true">meeting_room</span>
-          <div>
-            <h2 id="interview-demo-title">Зал «Север»</h2>
-            <p>Переговорная · до 8 человек</p>
-          </div>
-        </div>
-        <div class="landing-demo-actions">
-          <span class="landing-simulation">Симуляция · учебные данные</span>
-          <button type="button" id="demo-reset" class="outline-action">Сбросить</button>
-        </div>
-      </div>
-
-      <div class="landing-playground">
-        <section class="landing-map" aria-labelledby="landing-map-title">
-          <div class="landing-map-header">
+    <section id="interview-demo" class="landing-frame" aria-labelledby="interview-demo-title">
+      <div class="landing-demo">
+        <div class="landing-demo-header">
+          <div class="landing-resource">
+            <span class="landing-resource-icon symbol" aria-hidden="true">meeting_room</span>
             <div>
-              <h3 id="landing-map-title">Карта недели</h3>
-              <p id="demo-map-count"></p>
+              <h2 id="interview-demo-title">Зал «Север»</h2>
+              <p>Переговорная · до 8 человек</p>
             </div>
-            <button id="demo-map-flat" type="button" aria-pressed="false" aria-controls="demo-stage">Вид сверху</button>
           </div>
-          <div id="demo-stage" class="week-scene-stage">
-            <div id="demo-plane" class="week-scene-plane" role="group" aria-label="Слоты на карте" aria-describedby="demo-map-help"></div>
+          <div class="landing-demo-actions">
+            <span class="landing-simulation">Симуляция · учебные данные</span>
+            <button type="button" id="demo-reset" class="outline-action">Сбросить</button>
           </div>
-          <p id="demo-map-help" class="sr-only">Стрелки перемещают фокус между ячейками. Enter выбирает слот.</p>
-          <ul class="landing-legend" aria-label="Статусы на карте">
-            <li><span data-status="available"></span>Свободно</li>
-            <li><span data-status="booked"></span>Занято</li>
-            <li><span data-status="held"></span>Резерв</li>
-            <li><span data-status="maintenance"></span>Обслуживание</li>
-            <li><span data-status="mine"></span>Ваша бронь</li>
-          </ul>
-        </section>
+        </div>
 
-        <section class="landing-controls" aria-labelledby="landing-controls-title">
-          <h3 id="landing-controls-title">Выберите время</h3>
-          <p class="landing-week-range" id="demo-week-range"></p>
-          <div id="demo-days" class="landing-days" role="group" aria-label="Дни недели"></div>
-          <div id="demo-times" class="landing-times" role="group" aria-label="Слоты выбранного дня"></div>
-          <div class="landing-selection">
-            <div class="landing-selection-time"><span id="demo-date"></span><strong id="demo-time"></strong></div>
-            <span id="demo-status" class="landing-status"></span>
-          </div>
-          <div class="landing-booking-actions">
-            <button id="demo-book" class="page-action" type="button">Забронировать</button>
-            <button id="demo-race" class="outline-action" type="button">Сымитировать гонку</button>
-          </div>
-          <div id="demo-feedback" class="landing-feedback" hidden>
-            <div class="landing-feedback-message" role="status">
-              <strong id="demo-feedback-title" tabindex="-1"></strong>
-              <p id="demo-feedback-text"></p>
+        <div class="landing-playground">
+          <section class="landing-map" aria-labelledby="landing-map-title">
+            <div class="landing-map-header">
+              <div>
+                <h3 id="landing-map-title">Карта недели</h3>
+                <p id="demo-map-count"></p>
+              </div>
+              <button id="demo-map-flat" type="button" aria-pressed="false" aria-controls="demo-stage">Вид сверху</button>
             </div>
-            <div id="demo-alternatives" hidden>
-              <h4>Ближайшее свободное время</h4>
-              <div id="demo-alternative-list" class="landing-alternatives"></div>
+            <div id="demo-stage" class="week-scene-stage">
+              <div id="demo-plane" class="week-scene-plane" role="group" aria-label="Слоты на карте" aria-describedby="demo-map-help"></div>
             </div>
-          </div>
-        </section>
+            <p id="demo-map-help" class="sr-only">Стрелки перемещают фокус между ячейками. Enter выбирает слот.</p>
+            <ul class="landing-legend" aria-label="Статусы на карте">
+              <li><span data-status="available"></span>Свободно</li>
+              <li><span data-status="booked"></span>Занято</li>
+              <li><span data-status="held"></span>Резерв</li>
+              <li><span data-status="maintenance"></span>Обслуживание</li>
+              <li><span data-status="mine"></span>Ваша бронь</li>
+            </ul>
+          </section>
+
+          <section class="landing-controls" aria-labelledby="landing-controls-title">
+            <h3 id="landing-controls-title">Выберите время</h3>
+            <p class="landing-week-range" id="demo-week-range"></p>
+            <div id="demo-days" class="landing-days" role="group" aria-label="Дни недели"></div>
+            <div id="demo-times" class="landing-times" role="group" aria-label="Слоты выбранного дня"></div>
+            <div class="landing-selection">
+              <div class="landing-selection-time"><span id="demo-date"></span><strong id="demo-time"></strong></div>
+              <span id="demo-status" class="landing-status"></span>
+            </div>
+            <div class="landing-booking-actions">
+              <button id="demo-book" class="page-action" type="button">Забронировать</button>
+              <button id="demo-race" class="outline-action" type="button">Сымитировать гонку</button>
+            </div>
+            <div id="demo-feedback" class="landing-feedback" hidden>
+              <div class="landing-feedback-message" role="status">
+                <strong id="demo-feedback-title" tabindex="-1"></strong>
+                <p id="demo-feedback-text"></p>
+              </div>
+              <div id="demo-alternatives" hidden>
+                <h4>Ближайшее свободное время</h4>
+                <div id="demo-alternative-list" class="landing-alternatives"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <noscript><p class="landing-no-script">Включите JavaScript, чтобы выбрать слот и пройти сценарий.</p></noscript>
       </div>
-      <noscript><p class="landing-no-script">Включите JavaScript, чтобы выбрать слот и пройти сценарий.</p></noscript>
     </section>
 
     <section id="architecture" class="landing-architecture" aria-labelledby="architecture-title">

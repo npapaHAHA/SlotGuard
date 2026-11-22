@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <title>SlotGuard</title>
-  <rect width="256" height="256" rx="72" fill="#ddf795"/>
-  <g fill="#172720" transform="translate(24 24) scale(.8125)">
+  <rect width="256" height="256" rx="72" fill="#242428"/>
+  <g fill="#fff" transform="translate(24 24) scale(.8125)">
     <path d="M24 114V76l48-48h105l34 34-28 28H94l-26 26v42z"/>
     <path d="M232 142v38l-48 48H79l-34-34 28-28h89l26-26V98z"/>
   </g>

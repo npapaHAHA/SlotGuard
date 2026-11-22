@@ -5,13 +5,6 @@
 }
 
 :root {
-  --accent: #284f3c;
-  --accent-dark: #173b2a;
-  --ink: #19251d;
-  --subtle: #526158;
-  --border: #e0e6dc;
-  --surface: #f5f6f1;
-  --lime: #ddf795;
   color: var(--ink);
   background: var(--surface);
 }
@@ -38,7 +31,7 @@ a { color: inherit; }
   transform: translateY(-160%);
 }
 .skip-link:focus { transform: translateY(0); }
-.app-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; background: #fff; }
+.app-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; background: var(--sidebar-surface); }
 .app-main { min-width: 0; background: var(--surface); border-left: 1px solid var(--border); }
 .sidebar {
   align-self: start;
@@ -46,30 +39,31 @@ a { color: inherit; }
   top: 0;
   height: 100vh;
   padding: 25px 15px;
-  background: #fff;
+  background: var(--sidebar-surface);
   color: var(--subtle);
 }
 .sidebar .brand {
   margin: 0 9px 34px;
   text-decoration: none;
-  color: #1d3125;
+  color: var(--ink);
 }
 .sidebar nav { display: grid; gap: 5px; }
 .sidebar nav a {
   display: flex;
   align-items: center;
   gap: 11px;
-  border-radius: 10px;
-  padding: 11px 13px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 10px 12px;
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
   text-decoration: none;
 }
 .sidebar nav a .symbol { width: 20px; text-align: center; }
-.sidebar nav a:hover { background: #f1f4eb; color: var(--accent-dark); }
-.sidebar nav a[aria-current="page"] { background: #e9f2db; color: #233f2a; }
-.sidebar a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sidebar nav a:hover { background: var(--soft); color: var(--ink); }
+.sidebar nav a[aria-current="page"] { background: var(--panel); color: var(--ink); border-color: var(--border); }
+.sidebar a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 .shell { max-width: 1480px; padding-inline: clamp(20px, 3vw, 46px); }
 .topbar { border-bottom-color: var(--border); }
@@ -78,7 +72,7 @@ a { color: inherit; }
 .topbar .organization-controls select { background: #f6f8f3; border-color: var(--border); font-weight: 690; }
 .topbar .organization-controls label { color: var(--accent); }
 .guest { background: #f5f7f2; }
-.guest::before { background: #437451; }
+.guest::before { background: var(--line-strong); }
 main.shell { padding-top: 25px; padding-bottom: 52px; }
 .page-heading {
   display: flex;
@@ -131,18 +125,18 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   margin-bottom: 17px;
   border-radius: 19px;
   background:
-    linear-gradient(90deg, #20352a 0%, #20352a 40%, #20352a25 76%),
+    linear-gradient(90deg, #24242b 0%, #24242b 40%, #24242b38 86%),
     url("/design/meeting-room.webp") right 54% / 62% auto no-repeat,
-    #20352a;
+    #24242b;
   color: #fff;
 }
 .hero-content { max-width: 610px; }
-.hero-period { display: flex; align-items: center; gap: 7px; color: #d9e9da; font-size: 12px; font-weight: 620; }
-.hero-period .symbol { color: var(--lime); font-size: 17px; }
+.hero-period { display: flex; align-items: center; gap: 7px; color: #dbdce6; font-size: 12px; font-weight: 620; }
+.hero-period .symbol { color: #b9c3ff; font-size: 17px; }
 .hero-content h1 { font-size: clamp(33px, 4vw, 56px); margin-top: 8px; }
-.hero-caption { font-size: 14px; color: #e1e9e1; margin-top: 7px; line-height: 1.5; max-width: 300px; }
-.hero-action { min-height: 42px; margin-top: 19px; border-color: var(--lime); background: var(--lime); color: #1f3627; }
-.hero-action:hover:not(:disabled) { background: #eafaac; border-color: #eafaac; }
+.hero-caption { font-size: 14px; color: #ebebf0; margin-top: 7px; line-height: 1.5; max-width: 300px; }
+.hero-action { min-height: 42px; margin-top: 19px; border-color: #fff; background: #fff; color: #25252a; }
+.hero-action:hover:not(:disabled) { background: #e8e9f1; border-color: #e8e9f1; }
 .overview-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .overview-hero-actions > a:focus-visible { outline-color: #fff; }
 .hero-action .symbol { font-size: 16px; }
@@ -269,7 +263,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .form-message { color: #176453; font-size: 12px; overflow-wrap: anywhere; }
 .form-message.error { color: #963c25; }
 .resource[aria-pressed="true"] { background: #edf4e5; border-color: #92ae8c; }
-.resource:hover:not(:disabled), .slot:hover, .icon-button:hover:not(:disabled) { border-color: #92ae8c; }
+.resource:hover:not(:disabled), .slot:hover, .icon-button:hover:not(:disabled) { border-color: var(--line-strong); }
 .slot[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .resource-icon { color: var(--accent); background: #e8f0e2; }
 .details-date { overflow-wrap: anywhere; }
@@ -303,7 +297,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .mobile-days { display: none; }
 .week { min-width: 560px; grid-template-columns: repeat(7, minmax(80px, 1fr)); }
 .day + .day { border-left-color: var(--border); }
-.day.current .day-number { color: var(--accent-dark); background: var(--lime); }
+.day.current .day-number { color: var(--on-accent); background: var(--accent); }
 .slot.available, .pill.available { background: #eaf3e6; color: #2d5a3a; }
 .slot.booked, .pill.booked { background: #faeee6; color: #813e25; }
 .slot.mine, .pill.mine { background: #e4efce; color: #355521; }
@@ -357,7 +351,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .shell { padding-inline: 16px; }
   main.shell { padding-top: 20px; }
   .sidebar { padding-inline: 16px; }
-  .sidebar nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #698173 transparent; padding: 3px 3px 5px; }
+  .sidebar nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; padding: 3px 3px 5px; }
   .sidebar nav a { flex: 0 0 auto; font-size: 11px; gap: 5px; }
   .sidebar nav a .symbol { width: 15px; font-size: 15px; }
   .topbar .organization-controls label { display: none; }
@@ -372,7 +366,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     background:
       linear-gradient(90deg, #20352a 5%, #20352af8 40%, #20352a75 100%),
       url("/design/meeting-room.webp") right center / auto 100% no-repeat,
-      #20352a;
+      #24242b;
   }
   .hero-content h1 { font-size: 34px; max-width: 275px; }
   .hero-caption { max-width: 235px; }

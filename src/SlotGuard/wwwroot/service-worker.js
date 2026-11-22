@@ -1,5 +1,5 @@
 "use strict";
-const version = "slotguard-offline-v2";
+const version = "slotguard-offline-v3";
 const offlineFiles = ["/offline.html", "/time-tools.html", "/time-tools.js", "/time-zones.js",
   "/styles.css", "/workspace.css", "/p3.css", "/theme.css", "/theme.js", "/design/slotguard-mark.svg"];
 const offline = new Set(offlineFiles);
